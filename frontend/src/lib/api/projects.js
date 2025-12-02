@@ -1,10 +1,10 @@
 import { supabase } from '../supabase';
-import type { Database } from '../types/database';
+// import type { Database } from '../types/database';
 
-type Project = Database['public']['Tables']['projects']['Row'];
-type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
+// type Project = Database['public']['Tables']['projects']['Row'];
+// type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 
-export async function createProject(project: Omit<ProjectInsert, 'owner_id'>) {
+export async function createProject(project) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -34,7 +34,7 @@ export async function getProjects() {
   return data;
 }
 
-export async function getProject(id: string) {
+export async function getProject(id) {
   const { data, error } = await supabase
     .from('projects')
     .select(`
@@ -48,7 +48,7 @@ export async function getProject(id: string) {
   return data;
 }
 
-export async function updateProject(id: string, updates: Partial<Project>) {
+export async function updateProject(id, updates) {
   const { data, error } = await supabase
     .from('projects')
     .update(updates)

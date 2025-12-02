@@ -1,21 +1,21 @@
 import { supabase } from '../supabase';
-import type { Database } from '../types/database';
+// import type { Database } from '../types/database';
 
-type MemoryEntry = Database['public']['Tables']['memory_entries']['Row'];
-type MemoryEntryInsert = Database['public']['Tables']['memory_entries']['Insert'];
-type TimelineLink = Database['public']['Tables']['timeline_links']['Insert'];
+// type MemoryEntry = Database['public']['Tables']['memory_entries']['Row'];
+// type MemoryEntryInsert = Database['public']['Tables']['memory_entries']['Insert'];
+// type TimelineLink = Database['public']['Tables']['timeline_links']['Insert'];
 
-export interface MemoryEntryWithAuthor extends MemoryEntry {
-  author: {
-    full_name: string;
-    department: string | null;
-  };
-  children?: MemoryEntryWithAuthor[];
-}
+// export interface MemoryEntryWithAuthor extends MemoryEntry {
+//   author: {
+//     full_name: string;
+//     department: string | null;
+//   };
+//   children?: MemoryEntryWithAuthor[];
+// }
 
 export async function createMemoryEntry(
-  entry: Omit<MemoryEntryInsert, 'author_id'>,
-  parentEntryId?: string
+  entry,
+  parentEntryId
 ) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -42,7 +42,7 @@ export async function createMemoryEntry(
   return data;
 }
 
-export async function createTimelineLink(link: TimelineLink) {
+export async function createTimelineLink(link) {
   const { data, error } = await supabase
     .from('timeline_links')
     .insert(link)
@@ -53,7 +53,7 @@ export async function createTimelineLink(link: TimelineLink) {
   return data;
 }
 
-export async function getProjectTimeline(projectId: string): Promise<MemoryEntryWithAuthor[]> {
+export async function getProjectTimeline(projectId) {
   const { data: entries, error } = await supabase
     .from('memory_entries')
     .select(`
@@ -72,7 +72,7 @@ export async function getProjectTimeline(projectId: string): Promise<MemoryEntry
 
   if (linksError) throw linksError;
 
-  const entriesMap = new Map(entries.map(e => [e.id, { ...e, children: [] as MemoryEntryWithAuthor[] }]));
+  const entriesMap = new Map(entries.map(e => [e.id, { ...e, children }]));
 
   links?.forEach(link => {
     const parent = entriesMap.get(link.parent_entry_id);
@@ -85,12 +85,7 @@ export async function getProjectTimeline(projectId: string): Promise<MemoryEntry
   return Array.from(entriesMap.values());
 }
 
-export async function searchMemoryEntries(query: string, filters?: {
-  entry_type?: string;
-  status?: string;
-  department?: string;
-  project_id?: string;
-}) {
+export async function searchMemoryEntries(query, filters ) {
   let dbQuery = supabase
     .from('memory_entries')
     .select(`
@@ -124,7 +119,7 @@ export async function searchMemoryEntries(query: string, filters?: {
   return data;
 }
 
-export async function updateMemoryEntry(id: string, updates: Partial<MemoryEntry>) {
+export async function updateMemoryEntry(id, updates) {
   const { data, error } = await supabase
     .from('memory_entries')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -136,7 +131,7 @@ export async function updateMemoryEntry(id: string, updates: Partial<MemoryEntry
   return data;
 }
 
-export async function getMemoryEntry(id: string) {
+export async function getMemoryEntry(id) {
   const { data, error } = await supabase
     .from('memory_entries')
     .select(`
