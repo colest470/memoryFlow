@@ -24,7 +24,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
   const [error, setError] = useState('');
   const [tagInput, setTagInput] = useState('');
 
-  const [formData, setFormData] = useState<EntryFormData>({
+  const [formData, setFormData] = useState({
     title: '',
     content: '',
     entry_type: 'report',

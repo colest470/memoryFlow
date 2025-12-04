@@ -45,6 +45,9 @@ const authLimiter = rateLimit({
 
 app.use(cookieParser());
 
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+
 app.use('/api/auth', authLimiter, authRoutes);
 app.use("/api/user", userRoutes);
 
@@ -58,5 +61,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-	console.log(`API listening on http://localhost:${PORT}`);
+	console.log(`Server listening on http://localhost:${PORT}`);
 });

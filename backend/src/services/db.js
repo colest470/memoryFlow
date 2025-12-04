@@ -12,59 +12,141 @@ const initDatabase = async () => {
         await db.runAsync("PRAGMA foreign_keys = ON");
 
         await db.runAsync(`
-            CREATE TABLE IF NOT EXIIST profiles (
-                id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-                full_name text NOT NULL,
-                department text,
-                organization text NOT NULL,
-                role text NOT NULL CHECK (role IN ('student', 'researcher', 'faculty', 'employee', 'manager', 'admin')),
-                created_at timestamptz DEFAULT now(),
-                updated_at timestamptz DEFAULT now()
+            CREATE TABLE IF NOT EXISTS organizations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                settings JSON DEFAULT '{}'
             )
         `);
 
         await db.runAsync(`
-            CREATE TABLE IF NOT EXIIST projects (
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            title text NOT NULL,
-            description text,
-            department text,
-            organization text NOT NULL,
-            status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'archived')),
-            owner_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-            created_at timestamptz DEFAULT now(),
-            updated_at timestamptz DEFAULT now(),
-            metadata jsonb DEFAULT '{}'::jsonb
+            CREATE TABLE IF NOT EXISTS profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                organization TEXT, 
+                department TEXT,
+                role TEXT,
+                is_verified BOOL DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         await db.runAsync(`
-            CREATE TABLE IF NOT EXIIST memory_entries (
-                id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-                title text NOT NULL,
-                content text,
-                entry_type text NOT NULL CHECK (entry_type IN ('report', 'meeting_note', 'insight', 'decision', 'experiment', 'outcome', 'proposal', 'result')),
-                project_id uuid REFERENCES projects(id) ON DELETE CASCADE,
-                author_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-                status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'lesson_learned')),
-                department text,
-                tags text[] DEFAULT '{}',
-                created_at timestamptz DEFAULT now(),
-                updated_at timestamptz DEFAULT now(),
-                metadata jsonb DEFAULT '{}'::jsonb
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT UNIQUE NOT NULL,
+            user_id INTEGER NOT NULL,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES profiles (id) ON DELETE CASCADE
+        )
+        `);
+
+        // User-Organization Relationship (Many-to-Many with role)
+        await db.runAsync(`
+            CREATE TABLE IF NOT EXISTS user_organizations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                role TEXT NOT NULL CHECK (role IN ('admin', 'member', 'manager', 'viewer')),
+                department TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, organization_id)
             )
         `);
 
         await db.runAsync(`
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            parent_entry_id uuid NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
-            child_entry_id uuid NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
-            link_type text NOT NULL CHECK (link_type IN ('followed_from', 'revised_by', 'related_to', 'built_upon')),
-            created_at timestamptz DEFAULT now(),
-            UNIQUE(parent_entry_id, child_entry_id)
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'archived')),
+                organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                created_by INTEGER NOT NULL REFERENCES profiles(id),
+                department TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                metadata TEXT DEFAULT '{}'
+            )
+        `);
+
+        // Project members (who can access the project)
+        await db.runAsync(`
+            CREATE TABLE IF NOT EXISTS project_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                role TEXT NOT NULL CHECK (role IN ('owner', 'editor', 'viewer')),
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(project_id, user_id)
+            )
+        `);
+
+        await db.runAsync(`
+            CREATE TABLE IF NOT EXISTS memory_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT,
+                entry_type TEXT NOT NULL CHECK (entry_type IN ('report', 'meeting_note', 'insight', 'decision', 'experiment', 'outcome', 'proposal', 'result')),
+                project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+                author_id INTEGER NOT NULL REFERENCES profiles(id),
+                organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'lesson_learned')),
+                department TEXT,
+                tags TEXT, -- Store as comma-separated or JSON
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                metadata TEXT DEFAULT '{}'
+            )
+        `);
+
+        await db.runAsync(`
+            CREATE TABLE IF NOT EXISTS entry_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parent_entry_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+                child_entry_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+                link_type TEXT NOT NULL CHECK (link_type IN ('followed_from', 'revised_by', 'related_to', 'built_upon')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(parent_entry_id, child_entry_id)
+            )
+        `);
+
+        // Invitations for organization/project access
+        await db.runAsync(`
+            CREATE TABLE IF NOT EXISTS invitations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+                project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+                role TEXT NOT NULL,
+                token TEXT UNIQUE NOT NULL,
+                created_by INTEGER NOT NULL REFERENCES profiles(id),
+                status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'expired', 'revoked')),
+                expires_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
         `);
 
         console.log("Database initialized successfully");
+
+        // Create default admin user if not exists
+        const adminExists = await db.getAsync("SELECT id FROM profiles WHERE email = 'admin@memoryflow.com'");
+        if (!adminExists) {
+            // Note: You should hash the password properly in your auth system
+            await db.runAsync(
+                "INSERT INTO profiles (email, password_hash, full_name) VALUES (?, ?, ?)",
+                ['admin@memoryflow.com', 'hashed_password_here', 'System Admin']
+            );
+            console.log("Default admin user created");
+        }
+
     } catch (error) {
         console.error("Database initialization error!", error);
     } 

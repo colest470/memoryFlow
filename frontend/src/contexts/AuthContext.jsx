@@ -1,8 +1,8 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 const AuthContext = createContext(undefined);
 
-export const useAuth = ({ children }) => {
+export const useAuth =  () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
@@ -10,8 +10,7 @@ export const useAuth = ({ children }) => {
   return context;
 }
 
-
-const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,38 +65,41 @@ const AuthProvider = ({ children }) => {
     return response;
   }
 
-  const register = async (data) => {
+  const register = async ( email, fullName, password, confirmPassword, organization, department, role ) => {
     try {
-      if (data) {
-        throw new Error("No data received");
+      if ( !email || !fullName || !password || !confirmPassword || !organization || !department || !role) {
+        throw new Error("Some fields are missing");
       }
 
       const response = await fetch(`${backendURL}/api/auth/register`, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email, fullName, password, confirmPassword, organization, department, role }),
         credentials: "include"
       });
 
       if (!response.ok) {
         const error = await response.json();
+        console.log(error);
         throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
       }
+
+      return response.message;
     } catch (error) {
-      console.error("Error registering user!");
+      console.error("Error registering user: ", error);
     }
   }
 
-  const login = async (data) => {
+  const login = async ({email, password}) => {
     try {
-      if (data) {
+      if (email || password) {
         throw new Error("No data received");
       }
 
       const response = await fetch(`${backendURL}/api/auth/login`, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email, password }),
         credentials: "include"
       });
 
@@ -110,16 +112,23 @@ const AuthProvider = ({ children }) => {
       localStorage.setItem("accessToken", data.accessToken);
       setUser(data.user);
     } catch (error) {
-      console.error("Error registering user!");
+      console.error(error);
     }
   }
 
   const value = {
     user,
     register,
-    login
+    login,
   }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
+
 
 // import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 // import { supabase } from '../lib/supabase';

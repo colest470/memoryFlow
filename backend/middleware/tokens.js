@@ -15,7 +15,7 @@ export const authenticateToken = () => {
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = await db.getAsync('SELECT * FROM users WHERE id = ?', [decoded.userId]);
+      const user = await db.getAsync('SELECT * FROM profiles WHERE id = ?', [decoded.userId]);
 
       
       if (!user) {

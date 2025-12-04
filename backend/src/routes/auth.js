@@ -31,18 +31,28 @@ router.post("/register", [
     }
     return true;
   }),
-  body("name").notEmpty().withMessage("Name is required"),
+
+  body("fullName").notEmpty().withMessage("Name is required"),
+  body("organization").notEmpty().withMessage("Organization is required"),
+  body("department").notEmpty().withMessage("Department is required"),
+  body("role").notEmpty().withMessage("Role is required"),
 ], async (req, res) => {
     try {
-        console.log("Registerign users");
+        console.log("Registering user");
+
+        const { email, fullName, password, confirmPassword, organization, department, role } = req.body;
 
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
         }
 
-        const { email, password } = req.body;
-        const existingUser = await db.runAsync(`SELECT * FROM profiles WHERE email = ?`, [email]); // UNIQUE THINS TO IDENTIFY AN ORGANIZATION
+        const existingUser = await db.getAsync(`SELECT * FROM profiles WHERE email = ?`, [email]);
+
+        if (password !== confirmPassword) {
+            console.log("Password and confirm password do not match!");
+            res.status(400).json({ error: "Password and confirm password do not match!" });
+        }
 
         if (existingUser) {
             console.log("User already exists");
@@ -52,9 +62,76 @@ router.post("/register", [
         const saltRounds = 12;
         const passwordHash = await bycrypt.hash(password, saltRounds);
 
-        let result = await db.runAsync(`INSERT INTO profiles (email, ) values ()`, [email, passwordHash, ]);
+        let result = await db.runAsync(`INSERT INTO profiles (email, password_hash, full_name, organization, department, role) values (?, ?, ?, ?, ?, ?)`, [email, passwordHash, fullName, organization, department, role]);
+
+        res.status(201).json({ 
+            message: 'User registered successfully.',
+            userId: result.lastID
+        });
     } catch (error) {
-        
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post("/login", [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+
+  body('password').notEmpty()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    let user;
+
+    user = await db.getAsync('SELECT * FROM profiles WHERE email = ?', [email]);
+
+    if (!user) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    console.log(`User: ${user.email}`);
+
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user.id);
+
+    const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
+
+    await db.runAsync(
+    'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
+    [refreshToken, user.id, expiresAt]
+    );
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 3 * 7 * 24 * 60 * 60 * 1000 
+    });
+
+    res.json({
+      accessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        organization: user.organization,
+        department: user.department,
+        role: user.role
+      }
+    });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
