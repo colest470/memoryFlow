@@ -1,126 +1,250 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-
-// interface Profile {
-//   id: string;
-//   full_name: string;
-//   department: string | null;
-//   organization: string;
-//   role: 'student' | 'researcher' | 'faculty' | 'employee' | 'manager' | 'admin';
-// }
-
-// interface AuthContextType {
-//   user: User | null;
-//   profile: Profile | null;
-//   session: Session | null;
-//   loading: boolean;
-//   signUp: (email: string, password: string, profileData: Omit<Profile, 'id'>) => Promise<void>;
-//   signIn: (email: string, password: string) => Promise<void>;
-//   signOut: () => Promise<void>;
-// }
+import React, { createContext, useContext } from "react";
 
 const AuthContext = createContext(undefined);
 
-export function AuthProvider({ children }) {
+export const useAuth = ({ children }) => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context;
+}
+
+
+const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+  const backendURL = import.meta.env.VITE_API_BACKEND
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadProfile(session.user.id);
+  const apiRequest = async (url, options = {}) => {
+    const token = localStorage.getItem("accessToken");
+
+    const config = {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+      },
+      credentials: "include"
+    };
+
+    let response = await fetch(`${backendURL}${url}`);
+
+    if (response.status === 401 && token) {
+      try {
+        const refreshResponse = await fetch(`${backendURL}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          localStorage.setItem('accessToken', data.accessToken);
+          setUser(data.user);
+
+          config.headers = {
+            ...config.headers,
+            Authorization: `Bearer ${data.accessToken}`,
+          };
+          response = await fetch(`${backendURL}${url}`, config);
         } else {
-          setProfile(null);
-          setLoading(false);
+          localStorage.removeItem('accessToken');
+          setUser(null);
         }
-      })();
-    });
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        localStorage.removeItem('accessToken');
+        setUser(null);
+      }
+    }
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return response;
+  }
 
-  async function loadProfile(userId) {
+  const register = async (data) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      if (data) {
+        throw new Error("No data received");
+      }
 
-      if (error) throw error;
-      setProfile(data);
+      const response = await fetch(`${backendURL}/api/auth/register`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: "include"
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+      }
     } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
+      console.error("Error registering user!");
     }
   }
 
-  async function signUp(email, password, profileData) {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  const login = async (data) => {
+    try {
+      if (data) {
+        throw new Error("No data received");
+      }
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('User creation failed');
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: authData.user.id,
-        ...profileData,
+      const response = await fetch(`${backendURL}/api/auth/login`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: "include"
       });
 
-    if (profileError) throw profileError;
-  }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+      }
 
-  async function signIn(email, password) {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-  }
-
-  async function signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+      const data = await response.json();
+      localStorage.setItem("accessToken", data.accessToken);
+      setUser(data.user);
+    } catch (error) {
+      console.error("Error registering user!");
+    }
   }
 
   const value = {
     user,
-    profile,
-    session,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    register,
+    login
   }
-  return context;
 }
+
+// import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+// import { supabase } from '../lib/supabase';
+
+// // interface Profile {
+// //   id: string;
+// //   full_name: string;
+// //   department: string | null;
+// //   organization: string;
+// //   role: 'student' | 'researcher' | 'faculty' | 'employee' | 'manager' | 'admin';
+// // }
+
+// // interface AuthContextType {
+// //   user: User | null;
+// //   profile: Profile | null;
+// //   session: Session | null;
+// //   loading: boolean;
+// //   signUp: (email: string, password: string, profileData: Omit<Profile, 'id'>) => Promise<void>;
+// //   signIn: (email: string, password: string) => Promise<void>;
+// //   signOut: () => Promise<void>;
+// // }
+
+// const AuthContext = createContext(undefined);
+
+// export function AuthProvider({ children }) {
+//   const [user, setUser] = useState(null);
+//   const [profile, setProfile] = useState(null);
+//   const [session, setSession] = useState(null);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     supabase.auth.getSession().then(({ data: { session } }) => {
+//       setSession(session);
+//       setUser(session?.user ?? null);
+//       if (session?.user) {
+//         loadProfile(session.user.id);
+//       } else {
+//         setLoading(false);
+//       }
+//     });
+
+//     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+//       (async () => {
+//         setSession(session);
+//         setUser(session?.user ?? null);
+//         if (session?.user) {
+//           await loadProfile(session.user.id);
+//         } else {
+//           setProfile(null);
+//           setLoading(false);
+//         }
+//       })();
+//     });
+
+//     return () => subscription.unsubscribe();
+//   }, []);
+
+//   async function loadProfile(userId) {
+//     try {
+//       const { data, error } = await supabase
+//         .from('profiles')
+//         .select('*')
+//         .eq('id', userId)
+//         .maybeSingle();
+
+//       if (error) throw error;
+//       setProfile(data);
+//     } catch (error) {
+//       console.error('Error loading profile:', error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   }
+
+//   async function signUp(email, password, profileData) {
+//     console.log(email, password, profileData);
+//     // const { data: authData, error: authError } = await supabase.auth.signUp({
+//     //   email,
+//     //   password,
+//     // });
+
+//     // if (authError) throw authError;
+//     // if (!authData.user) throw new Error('User creation failed');
+
+//     // const { error: profileError } = await supabase
+//     //   .from('profiles')
+//     //   .insert({
+//     //     id: authData.user.id,
+//     //     ...profileData,
+//     //   });
+
+//     // if (profileError) throw profileError;
+//   }
+
+//   async function signIn(email, password) {
+//     const { error } = await supabase.auth.signInWithPassword({
+//       email,
+//       password,
+//     });
+
+//     if (error) throw error;
+//   }
+
+//   async function signOut() {
+//     const { error } = await supabase.auth.signOut();
+//     if (error) throw error;
+//   }
+
+//   const value = {
+//     user,
+//     profile,
+//     session,
+//     loading,
+//     signUp,
+//     signIn,
+//     signOut,
+//   };
+
+//   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+// }
+
+// export function useAuth() {
+//   const context = useContext(AuthContext);
+//   if (context === undefined) {
+//     throw new Error('useAuth must be used within an AuthProvider');
+//   }
+//   return context;
+// }

@@ -21,12 +21,7 @@ export default function AuthForm() {
 
     try {
       if (isSignUp) {
-        await signUp(email, password, {
-          full_name: fullName,
-          organization,
-          department: department || null,
-          role,
-        });
+        await signUp(email, password, fullName, organization, department, role);
       } else {
         await signIn(email, password);
       }
