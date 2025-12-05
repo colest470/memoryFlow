@@ -13,6 +13,7 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          <Route path="/" element={<ProjectView />}/>
           <Route path='/login' element={<Login />}/>
           <Route path='/register' element={<SignUp />}/>
 

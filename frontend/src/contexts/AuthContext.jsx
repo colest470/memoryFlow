@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(undefined);
 
@@ -15,6 +15,30 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const backendURL = import.meta.env.VITE_API_BACKEND
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('accessToken');
+
+      if (token) {
+        try {
+          const response = await apiRequest(`/api/user/profile`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data.user);
+            console.log(user);
+          }
+        } catch (error) {
+          console.error('Session check failed:', error);
+        }
+      }
+      
+      setLoading(false);
+    };
+  
+    initAuth();
+  }, []);
 
   const apiRequest = async (url, options = {}) => {
     const token = localStorage.getItem("accessToken");
@@ -84,16 +108,16 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
       }
 
-      return response.message;
+      return response;
     } catch (error) {
       console.error("Error registering user: ", error);
     }
   }
 
-  const login = async ({email, password}) => {
+  const login = async (email, password) => {
     try {
-      if (email || password) {
-        throw new Error("No data received");
+      if (!email || !password) {
+        throw new Error("some fields are empty");
       }
 
       const response = await fetch(`${backendURL}/api/auth/login`, {
@@ -116,10 +140,42 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+    async function loadData() {
+      try {
+        const projectsData = await getProjects();
+        setProjects(projectsData || []);
+  
+        const { count: entriesCount } = await supabase
+          .from('memory_entries')
+          .select('*', { count: 'exact', head: true });
+  
+        const { count: lessonsCount } = await supabase
+          .from('memory_entries')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'lesson_learned');
+  
+        const { data: contributorsData } = await supabase
+          .from('profiles')
+          .select('id');
+  
+        setStats({
+          totalEntries: entriesCount || 0,
+          activeProjects: projectsData?.filter(p => p.status === 'active').length || 0,
+          contributors: contributorsData?.length || 0,
+          lessonLearned: lessonsCount || 0,
+        });
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
   const value = {
     user,
     register,
     login,
+    loadData,
   }
 
   return (

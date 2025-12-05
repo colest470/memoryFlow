@@ -8,7 +8,7 @@ import ProjectCard from '../components/projects/ProjectCard';
 import ProjectForm from '../components/projects/ProjectForm';
 
 export default function Dashboard() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, loadData } = useAuth();
   const [projects, setProjects] = useState([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [stats, setStats] = useState({
@@ -18,42 +18,11 @@ export default function Dashboard() {
     lessonLearned: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'projects' | 'search'>('projects');
+  const [activeView, setActiveView] = useState('projects');
 
   useEffect(() => {
-    loadData();
+    // loadData();
   }, []);
-
-  async function loadData() {
-    try {
-      const projectsData = await getProjects();
-      setProjects(projectsData || []);
-
-      const { count: entriesCount } = await supabase
-        .from('memory_entries')
-        .select('*', { count: 'exact', head: true });
-
-      const { count: lessonsCount } = await supabase
-        .from('memory_entries')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'lesson_learned');
-
-      const { data: contributorsData } = await supabase
-        .from('profiles')
-        .select('id');
-
-      setStats({
-        totalEntries: entriesCount || 0,
-        activeProjects: projectsData?.filter(p => p.status === 'active').length || 0,
-        contributors: contributorsData?.length || 0,
-        lessonLearned: lessonsCount || 0,
-      });
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleCreateProject(data) {
     await createProject(data);

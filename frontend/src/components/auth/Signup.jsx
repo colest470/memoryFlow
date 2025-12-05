@@ -15,6 +15,7 @@ function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const navigate = useNavigate();
   const { register } = useAuth();
@@ -36,7 +37,14 @@ function SignUp() {
     setLoading(true);
 
     try {
-      await register(email, fullName, password, confirmPassword, organization, department, role);
+      const response = await register(email, fullName, password, confirmPassword, organization, department, role);
+
+      if (response.message) {
+        setSuccess(response.message);
+      } else {
+        setError(response.error);
+      } 
+
       navigate('/login');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during sign up');

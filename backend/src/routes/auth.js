@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import bycrypt from "bcryptjs"
 import db from "../services/db.js";
 import { body, validationResult } from 'express-validator';
+import { generateTokens, authenticateToken } from "../../middleware/tokens.js";
 
 db.getAsync = promisify(db.get.bind(db));
 db.allAsync = promisify(db.all.bind(db));
@@ -92,12 +93,12 @@ router.post("/login", [
     user = await db.getAsync('SELECT * FROM profiles WHERE email = ?', [email]);
 
     if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     console.log(`User: ${user.email}`);
 
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    const isValidPassword = await bycrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }

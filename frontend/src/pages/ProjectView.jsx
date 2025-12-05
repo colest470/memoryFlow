@@ -9,12 +9,12 @@ import EntryForm from '../components/forms/EntryForm';
 // }
 
 export default function ProjectView({ projectId }) {
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEntryForm, setShowEntryForm] = useState(false);
-  const [parentEntryId, setParentEntryId] = useState<string | undefined>(undefined);
-  const [selectedEntry, setSelectedEntry] = useState<MemoryEntryWithAuthor | null>(null);
+  const [parentEntryId, setParentEntryId] = useState(undefined);
+  const [selectedEntry, setSelectedEntry] = useState(null);
 
   useEffect(() => {
     loadProjectData();
