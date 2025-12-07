@@ -136,4 +136,85 @@ router.post("/login", [
     }
 });
 
+router.post('/refresh', async (req, res) => {
+  try {
+    console.log("Refresh ...");
+    const { refreshToken } = req.cookies;
+    console.log(refreshToken, "143");
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token required' });
+    }
+
+    const tokenRecord = await db.getAsync(
+        'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime("now")',
+        [refreshToken]
+    );
+
+    if (!tokenRecord) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    console.log("Tokenrecord: ", tokenRecord);
+
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(tokenRecord.user_id);
+
+    console.log(refreshToken, "70");
+
+    await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
+
+    const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
+    await db.runAsync(
+    'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
+    [newRefreshToken, tokenRecord.user_id, expiresAt]
+    );
+
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || true,
+      sameSite: 'strict',
+      maxAge: 3 * 7 * 24 * 60 * 60 * 1000
+    });
+
+    const user = await db.getAsync('SELECT * FROM profiles WHERE id = ?', [tokenRecord.user_id]);
+
+    console.log(user);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      accessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: role,
+      }
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/logout', authenticateToken(), async (req, res) => {
+  try {
+    console.log("User logging out ...");
+    const { refreshToken } = req.cookies;
+    
+    if (refreshToken) {
+      await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
+    }
+
+    res.clearCookie('refreshToken');
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 export default router;

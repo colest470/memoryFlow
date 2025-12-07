@@ -7,13 +7,14 @@ import { AuthProvider } from './contexts/AuthContext';
 import SignUp from './components/auth/Signup';
 import Login from './components/auth/LogIn';
 import ProtectedRoute from './components/auth/ProtectedRoutes';
+import Home from './pages/Home';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<ProjectView />}/>
+          <Route path="/" element={<Home />}/>
           <Route path='/login' element={<Login />}/>
           <Route path='/register' element={<SignUp />}/>
 

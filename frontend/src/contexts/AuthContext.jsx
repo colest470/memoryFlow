@@ -23,18 +23,19 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const response = await apiRequest(`/api/user/profile`);
+          setLoading(true);
           
           if (response.ok) {
+            setLoading(false);
             const data = await response.json();
+            console.log(data, ":profile");
             setUser(data.user);
-            console.log(user);
           }
         } catch (error) {
           console.error('Session check failed:', error);
         }
       }
       
-      setLoading(false);
     };
   
     initAuth();
@@ -53,9 +54,9 @@ export const AuthProvider = ({ children }) => {
       credentials: "include"
     };
 
-    let response = await fetch(`${backendURL}${url}`);
+    let response = await fetch(`${backendURL}${url}`, config);
 
-    if (response.status === 401 && token) {
+    if (response.status === 401 && token) { // unautharized
       try {
         const refreshResponse = await fetch(`${backendURL}/api/auth/refresh`, {
           method: "POST",
@@ -101,7 +102,7 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, fullName, password, confirmPassword, organization, department, role }),
         credentials: "include"
       });
-
+      
       if (!response.ok) {
         const error = await response.json();
         console.log(error);
@@ -140,7 +141,22 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-    async function loadData() {
+  const logout = async () => {
+    try {
+      const role = localStorage.getItem("role");
+      await apiRequest('/api/auth/logout', {
+         method: 'POST',
+        });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem("role");
+      setUser(null);
+    }
+  };
+
+    const loadData = async () => {
       try {
         const projectsData = await getProjects();
         setProjects(projectsData || []);
@@ -173,9 +189,11 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    loading,
     register,
     login,
     loadData,
+    logout,
   }
 
   return (

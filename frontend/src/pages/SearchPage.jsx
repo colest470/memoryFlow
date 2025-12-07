@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import SearchBar from '../components/search/SearchBar';
 import SearchResults from '../components/search/SearchResults';
-import { searchMemoryEntries } from '../lib/api/entries';
+import { entriesAPI } from '../lib/api/entries';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SearchPage() {
   const [results, setResults] = useState([]);
@@ -13,7 +14,7 @@ export default function SearchPage() {
     setLoading(true);
     setHasSearched(true);
     try {
-      const data = await searchMemoryEntries(query, filters);
+      const data = await entriesAPI.searchEntries(query, filters);
       setResults(data || []);
     } catch (error) {
       console.error('Error searching:', error);

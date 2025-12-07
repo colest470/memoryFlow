@@ -1,147 +1,134 @@
-import { supabase } from '../supabase';
-// import type { Database } from '../types/database';
+const API_URL = import.meta.env.VITE_API_BACKEND;
 
-// type MemoryEntry = Database['public']['Tables']['memory_entries']['Row'];
-// type MemoryEntryInsert = Database['public']['Tables']['memory_entries']['Insert'];
-// type TimelineLink = Database['public']['Tables']['timeline_links']['Insert'];
+const getAuthHeader = () => ({
+  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+  'Content-Type': 'application/json'
+});
 
-// export interface MemoryEntryWithAuthor extends MemoryEntry {
-//   author: {
-//     full_name: string;
-//     department: string | null;
-//   };
-//   children?: MemoryEntryWithAuthor[];
-// }
-
-export async function createMemoryEntry(
-  entry,
-  parentEntryId
-) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data, error } = await supabase
-    .from('memory_entries')
-    .insert({
-      ...entry,
-      author_id: user.id,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  if (parentEntryId && data) {
-    await createTimelineLink({
-      parent_entry_id: parentEntryId,
-      child_entry_id: data.id,
-      link_type: 'followed_from',
+export const entriesAPI = {
+  // Create a new entry
+  async createEntry(entryData) {
+    const response = await fetch(`${API_URL}/api/entries`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify(entryData),
+      credentials: 'include'
     });
-  }
 
-  return data;
-}
-
-export async function createTimelineLink(link) {
-  const { data, error } = await supabase
-    .from('timeline_links')
-    .insert(link)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getProjectTimeline(projectId) {
-  const { data: entries, error } = await supabase
-    .from('memory_entries')
-    .select(`
-      *,
-      author:profiles!memory_entries_author_id_fkey(full_name, department)
-    `)
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-
-  const { data: links, error: linksError } = await supabase
-    .from('timeline_links')
-    .select('*')
-    .in('parent_entry_id', entries.map(e => e.id));
-
-  if (linksError) throw linksError;
-
-  const entriesMap = new Map(entries.map(e => [e.id, { ...e, children }]));
-
-  links?.forEach(link => {
-    const parent = entriesMap.get(link.parent_entry_id);
-    const child = entriesMap.get(link.child_entry_id);
-    if (parent && child) {
-      parent.children.push(child);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create entry');
     }
-  });
 
-  return Array.from(entriesMap.values());
-}
+    return response.json();
+  },
 
-export async function searchMemoryEntries(query, filters ) {
-  let dbQuery = supabase
-    .from('memory_entries')
-    .select(`
-      *,
-      author:profiles!memory_entries_author_id_fkey(full_name, department),
-      project:projects(title)
-    `);
+  // Search entries with filters
+  async searchEntries(query = '', filters = {}) {
+    const params = new URLSearchParams({ q: query, ...filters });
+    const response = await fetch(`${API_URL}/api/entries?${params}`, {
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
 
-  if (filters?.entry_type) {
-    dbQuery = dbQuery.eq('entry_type', filters.entry_type);
+    if (!response.ok) {
+      throw new Error('Failed to search entries');
+    }
+
+    return response.json();
+  },
+
+  // Get single entry with connections
+  async getEntry(entryId) {
+    const response = await fetch(`${API_URL}/api/entries/${entryId}`, {
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch entry');
+    }
+
+    return response.json();
+  },
+
+  // Update an entry
+  async updateEntry(entryId, updates) {
+    const response = await fetch(`${API_URL}/api/entries/${entryId}`, {
+      method: 'PUT',
+      headers: getAuthHeader(),
+      body: JSON.stringify(updates),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update entry');
+    }
+
+    return response.json();
+  },
+
+  // Delete an entry
+  async deleteEntry(entryId) {
+    const response = await fetch(`${API_URL}/api/entries/${entryId}`, {
+      method: 'DELETE',
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete entry');
+    }
+
+    return response.json();
+  },
+
+  // Link entries
+  async linkEntries(parentId, childId, linkType = 'related_to') {
+    const response = await fetch(`${API_URL}/api/entries/${parentId}/links`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify({
+        related_entry_id: childId,
+        link_type: linkType
+      }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create link');
+    }
+
+    return response.json();
+  },
+
+  // Get project timeline
+  async getProjectTimeline(projectId) {
+    const response = await fetch(`${API_URL}/api/entries/timeline/${projectId}`, {
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch timeline');
+    }
+
+    return response.json();
+  },
+
+  // Get dashboard statistics
+  async getStats() {
+    const response = await fetch(`${API_URL}/api/entries/stats/dashboard`, {
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch statistics');
+    }
+
+    return response.json();
   }
-  if (filters?.status) {
-    dbQuery = dbQuery.eq('status', filters.status);
-  }
-  if (filters?.department) {
-    dbQuery = dbQuery.eq('department', filters.department);
-  }
-  if (filters?.project_id) {
-    dbQuery = dbQuery.eq('project_id', filters.project_id);
-  }
-
-  if (query) {
-    dbQuery = dbQuery.or(`title.ilike.%${query}%,content.ilike.%${query}%`);
-  }
-
-  dbQuery = dbQuery.order('created_at', { ascending: false });
-
-  const { data, error } = await dbQuery;
-
-  if (error) throw error;
-  return data;
-}
-
-export async function updateMemoryEntry(id, updates) {
-  const { data, error } = await supabase
-    .from('memory_entries')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getMemoryEntry(id) {
-  const { data, error } = await supabase
-    .from('memory_entries')
-    .select(`
-      *,
-      author:profiles!memory_entries_author_id_fkey(full_name, department),
-      project:projects(title, id)
-    `)
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
+};

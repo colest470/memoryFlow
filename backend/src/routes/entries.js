@@ -1,147 +1,707 @@
-import { supabase } from '../supabase';
-// import type { Database } from '../types/database';
+import express from "express";
+import { promisify } from 'util';
+import { authenticateToken } from "../../middleware/tokens.js";
+import db from "../services/db.js";
 
-// type MemoryEntry = Database['public']['Tables']['memory_entries']['Row'];
-// type MemoryEntryInsert = Database['public']['Tables']['memory_entries']['Insert'];
-// type TimelineLink = Database['public']['Tables']['timeline_links']['Insert'];
+db.getAsync = promisify(db.get.bind(db));
+db.allAsync = promisify(db.all.bind(db));
 
-// export interface MemoryEntryWithAuthor extends MemoryEntry {
-//   author: {
-//     full_name: string;
-//     department: string | null;
-//   };
-//   children?: MemoryEntryWithAuthor[];
-// }
-
-export async function createMemoryEntry(
-  entry,
-  parentEntryId
-) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data, error } = await supabase
-    .from('memory_entries')
-    .insert({
-      ...entry,
-      author_id: user.id,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  if (parentEntryId && data) {
-    await createTimelineLink({
-      parent_entry_id: parentEntryId,
-      child_entry_id: data.id,
-      link_type: 'followed_from',
+db.runAsync = (sql, params) => {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) return reject(err);
+      resolve({ lastID: this.lastID, changes: this.changes });
     });
-  }
-
-  return data;
-}
-
-export async function createTimelineLink(link) {
-  const { data, error } = await supabase
-    .from('timeline_links')
-    .insert(link)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getProjectTimeline(projectId) {
-  const { data: entries, error } = await supabase
-    .from('memory_entries')
-    .select(`
-      *,
-      author:profiles!memory_entries_author_id_fkey(full_name, department)
-    `)
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-
-  const { data: links, error: linksError } = await supabase
-    .from('timeline_links')
-    .select('*')
-    .in('parent_entry_id', entries.map(e => e.id));
-
-  if (linksError) throw linksError;
-
-  const entriesMap = new Map(entries.map(e => [e.id, { ...e, children }]));
-
-  links?.forEach(link => {
-    const parent = entriesMap.get(link.parent_entry_id);
-    const child = entriesMap.get(link.child_entry_id);
-    if (parent && child) {
-      parent.children.push(child);
-    }
   });
+};
 
-  return Array.from(entriesMap.values());
-}
+const router = express.Router();
 
-export async function searchMemoryEntries(query, filters ) {
-  let dbQuery = supabase
-    .from('memory_entries')
-    .select(`
-      *,
-      author:profiles!memory_entries_author_id_fkey(full_name, department),
-      project:projects(title)
-    `);
+/**
+ * CREATE ENTRY
+ * POST /api/entries
+ * 
+ * Flow: User selects "Add Knowledge" → either:
+ * 1. Simple Upload: Fill title, content, tags, type
+ * 2. AI-Assisted: Provide content, receive suggestions for tags/summary/category
+ * 
+ * Body:
+ * {
+ *   title: string (required)
+ *   content: string
+ *   entry_type: 'report' | 'meeting_note' | 'insight' | 'decision' | 'experiment' | 'outcome' | 'proposal' | 'result'
+ *   project_id: uuid (optional)
+ *   status: 'active' | 'archived' | 'lesson_learned' (default: 'active')
+ *   tags: string[] (optional)
+ *   metadata: {
+ *     ai_generated_tags?: string[],
+ *     ai_summary?: string,
+ *     ai_category?: string,
+ *     department_suggested?: string
+ *   }
+ *   parent_entry_id: uuid (optional - for timeline links)
+ *   link_type: 'followed_from' | 'revised_by' | 'related_to' | 'built_upon' (optional)
+ * }
+ */
+router.post('/', authenticateToken(), async (req, res) => {
+  try {
+    const {
+      title,
+      content,
+      entry_type = 'insight',
+      project_id,
+      status = 'active',
+      tags = [],
+      metadata = {},
+      parent_entry_id,
+      link_type = 'followed_from'
+    } = req.body;
 
-  if (filters?.entry_type) {
-    dbQuery = dbQuery.eq('entry_type', filters.entry_type);
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    const user = req.user;
+    const tagsArray = Array.isArray(tags) ? tags : [];
+
+    // Insert the memory entry
+    const result = await db.runAsync(
+      `INSERT INTO memory_entries 
+       (title, content, entry_type, project_id, author_id, status, department, tags, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      [
+        title,
+        content || null,
+        entry_type,
+        project_id || null,
+        user.id,
+        status,
+        user.department || null,
+        JSON.stringify(tagsArray),
+        JSON.stringify(metadata || {})
+      ]
+    );
+
+    const entryId = result.lastID;
+
+    // Create timeline link if parent entry is specified
+    if (parent_entry_id) {
+      try {
+        await db.runAsync(
+          `INSERT INTO timeline_links (parent_entry_id, child_entry_id, link_type, created_at)
+           VALUES (?, ?, ?, datetime('now'))`,
+          [parent_entry_id, entryId, link_type]
+        );
+      } catch (linkError) {
+        console.warn('Failed to create timeline link:', linkError);
+        // Don't fail the entry creation if link fails
+      }
+    }
+
+    // Fetch the created entry with author details
+    const entry = await db.getAsync(
+      `SELECT me.*, p.full_name as author_name, p.department as author_department
+       FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE me.id = ?`,
+      [entryId]
+    );
+
+    res.status(201).json({
+      message: 'Entry created successfully',
+      entry: {
+        id: entry.id,
+        title: entry.title,
+        content: entry.content,
+        entry_type: entry.entry_type,
+        project_id: entry.project_id,
+        author_id: entry.author_id,
+        author_name: entry.author_name,
+        status: entry.status,
+        department: entry.department,
+        tags: JSON.parse(entry.tags || '[]'),
+        metadata: JSON.parse(entry.metadata || '{}'),
+        created_at: entry.created_at,
+        updated_at: entry.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Entry creation error:', error);
+    res.status(500).json({ error: 'Failed to create entry' });
   }
-  if (filters?.status) {
-    dbQuery = dbQuery.eq('status', filters.status);
+});
+
+/**
+ * SEARCH & BROWSE ENTRIES
+ * GET /api/entries
+ * 
+ * Flow: User wants to find knowledge via:
+ * 1. Browse Timeline: See history visually, sorted by creation date
+ * 2. Smart Search: Filter by text, department, status, person, tags
+ * 
+ * Query params:
+ * - q: search query (searches title and content)
+ * - entry_type: filter by type
+ * - status: filter by status
+ * - department: filter by department
+ * - project_id: filter by project
+ * - tags: comma-separated tags to filter
+ * - author_id: filter by specific author
+ * - sort: 'created_at' (default), 'updated_at', 'title'
+ * - order: 'desc' (default), 'asc'
+ * - limit: items per page (default: 20, max: 100)
+ * - offset: pagination offset (default: 0)
+ */
+router.get('/', authenticateToken(), async (req, res) => {
+  try {
+    const {
+      q = '',
+      entry_type,
+      status,
+      department,
+      project_id,
+      tags,
+      author_id,
+      sort = 'created_at',
+      order = 'desc',
+      limit = 20,
+      offset = 0
+    } = req.query;
+
+    const parsedLimit = Math.min(parseInt(limit) || 20, 100);
+    const parsedOffset = parseInt(offset) || 0;
+
+    let query = `
+      SELECT me.*, 
+             p.full_name as author_name,
+             p.department as author_department,
+             p.organization,
+             COUNT(*) OVER() as total_count
+      FROM memory_entries me
+      JOIN profiles p ON p.id = me.author_id
+      WHERE p.organization = ?
+    `;
+
+    const params = [req.user.organization];
+
+    // Full text search on title and content
+    if (q) {
+      query += ` AND (me.title LIKE ? OR me.content LIKE ?)`;
+      const searchTerm = `%${q}%`;
+      params.push(searchTerm, searchTerm);
+    }
+
+    // Filter by entry type
+    if (entry_type) {
+      query += ` AND me.entry_type = ?`;
+      params.push(entry_type);
+    }
+
+    // Filter by status
+    if (status) {
+      query += ` AND me.status = ?`;
+      params.push(status);
+    }
+
+    // Filter by department
+    if (department) {
+      query += ` AND me.department = ?`;
+      params.push(department);
+    }
+
+    // Filter by project
+    if (project_id) {
+      query += ` AND me.project_id = ?`;
+      params.push(project_id);
+    }
+
+    // Filter by author
+    if (author_id) {
+      query += ` AND me.author_id = ?`;
+      params.push(author_id);
+    }
+
+    // Filter by tags (JSON array in SQLite)
+    if (tags) {
+      const tagArray = tags.split(',').map(t => t.trim());
+      tagArray.forEach((tag) => {
+        query += ` AND me.tags LIKE ?`;
+        params.push(`%"${tag}"%`);
+      });
+    }
+
+    // Order
+    const validSortFields = ['created_at', 'updated_at', 'title'];
+    const validOrder = order === 'asc' ? 'ASC' : 'DESC';
+    const sortField = validSortFields.includes(sort) ? sort : 'created_at';
+    query += ` ORDER BY me.${sortField} ${validOrder}`;
+
+    // Pagination
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(parsedLimit, parsedOffset);
+
+    const entries = await db.allAsync(query, params);
+
+    const totalCount = entries.length > 0 ? entries[0].total_count : 0;
+
+    const formattedEntries = entries.map(entry => ({
+      id: entry.id,
+      title: entry.title,
+      content: entry.content,
+      entry_type: entry.entry_type,
+      project_id: entry.project_id,
+      author_id: entry.author_id,
+      author_name: entry.author_name,
+      author_department: entry.author_department,
+      status: entry.status,
+      department: entry.department,
+      tags: JSON.parse(entry.tags || '[]'),
+      metadata: JSON.parse(entry.metadata || '{}'),
+      created_at: entry.created_at,
+      updated_at: entry.updated_at
+    }));
+
+    res.json({
+      entries: formattedEntries,
+      pagination: {
+        total: totalCount,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        returned: formattedEntries.length
+      }
+    });
+  } catch (error) {
+    console.error('Entry search error:', error);
+    res.status(500).json({ error: 'Failed to search entries' });
   }
-  if (filters?.department) {
-    dbQuery = dbQuery.eq('department', filters.department);
+});
+
+/**
+ * GET SINGLE ENTRY WITH CONTEXT
+ * GET /api/entries/:id
+ * 
+ * Flow: User clicks on entry to "View Context"
+ * Returns: Full entry + linked entries (parent/child for timeline story)
+ */
+router.get('/:id', authenticateToken(), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get main entry
+    const entry = await db.getAsync(
+      `SELECT me.*, 
+              p.full_name as author_name,
+              p.department as author_department,
+              p.organization
+       FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE me.id = ? AND p.organization = ?`,
+      [id, req.user.organization]
+    );
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Get related entries through timeline links
+    const relatedEntries = await db.allAsync(
+      `SELECT tl.link_type,
+              CASE 
+                WHEN tl.parent_entry_id = ? THEN tl.child_entry_id
+                ELSE tl.parent_entry_id
+              END as related_id,
+              me.title,
+              me.entry_type,
+              me.status,
+              me.created_at,
+              p.full_name as author_name
+       FROM timeline_links tl
+       JOIN memory_entries me ON (
+         (tl.parent_entry_id = me.id AND tl.child_entry_id = ?) OR
+         (tl.child_entry_id = me.id AND tl.parent_entry_id = ?)
+       )
+       JOIN profiles p ON p.id = me.author_id
+       WHERE p.organization = ?`,
+      [id, id, id, req.user.organization]
+    );
+
+    res.json({
+      entry: {
+        id: entry.id,
+        title: entry.title,
+        content: entry.content,
+        entry_type: entry.entry_type,
+        project_id: entry.project_id,
+        author_id: entry.author_id,
+        author_name: entry.author_name,
+        author_department: entry.author_department,
+        status: entry.status,
+        department: entry.department,
+        tags: JSON.parse(entry.tags || '[]'),
+        metadata: JSON.parse(entry.metadata || '{}'),
+        created_at: entry.created_at,
+        updated_at: entry.updated_at
+      },
+      connections: relatedEntries.map(rel => ({
+        id: rel.related_id,
+        title: rel.title,
+        entry_type: rel.entry_type,
+        status: rel.status,
+        author_name: rel.author_name,
+        link_type: rel.link_type,
+        created_at: rel.created_at
+      }))
+    });
+  } catch (error) {
+    console.error('Entry fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch entry' });
   }
-  if (filters?.project_id) {
-    dbQuery = dbQuery.eq('project_id', filters.project_id);
+});
+
+/**
+ * UPDATE ENTRY
+ * PUT /api/entries/:id
+ * 
+ * Flow: User "Adds to Knowledge" by:
+ * - Linking new insights
+ * - Updating status (e.g., to 'lesson_learned')
+ * - Adding tags/metadata
+ * 
+ * Body: Any combination of:
+ * {
+ *   title?: string,
+ *   content?: string,
+ *   status?: 'active' | 'archived' | 'lesson_learned',
+ *   tags?: string[],
+ *   metadata?: object
+ * }
+ */
+router.put('/:id', authenticateToken(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content, status, tags, metadata } = req.body;
+
+    // Verify ownership
+    const entry = await db.getAsync(
+      'SELECT * FROM memory_entries WHERE id = ?',
+      [id]
+    );
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    if (entry.author_id !== req.user.id) {
+      return res.status(403).json({ error: 'You can only update your own entries' });
+    }
+
+    // Build update query
+    const updates = [];
+    const values = [];
+
+    if (title !== undefined) {
+      updates.push('title = ?');
+      values.push(title);
+    }
+    if (content !== undefined) {
+      updates.push('content = ?');
+      values.push(content);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    if (tags !== undefined) {
+      updates.push('tags = ?');
+      values.push(JSON.stringify(tags));
+    }
+    if (metadata !== undefined) {
+      updates.push('metadata = ?');
+      values.push(JSON.stringify(metadata));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No updates provided' });
+    }
+
+    updates.push('updated_at = datetime("now")');
+    values.push(id);
+
+    const updateQuery = `UPDATE memory_entries SET ${updates.join(', ')} WHERE id = ?`;
+
+    await db.runAsync(updateQuery, values);
+
+    // Fetch updated entry
+    const updatedEntry = await db.getAsync(
+      `SELECT me.*, 
+              p.full_name as author_name
+       FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE me.id = ?`,
+      [id]
+    );
+
+    res.json({
+      message: 'Entry updated successfully',
+      entry: {
+        id: updatedEntry.id,
+        title: updatedEntry.title,
+        content: updatedEntry.content,
+        entry_type: updatedEntry.entry_type,
+        status: updatedEntry.status,
+        department: updatedEntry.department,
+        tags: JSON.parse(updatedEntry.tags || '[]'),
+        metadata: JSON.parse(updatedEntry.metadata || '{}'),
+        created_at: updatedEntry.created_at,
+        updated_at: updatedEntry.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Entry update error:', error);
+    res.status(500).json({ error: 'Failed to update entry' });
   }
+});
 
-  if (query) {
-    dbQuery = dbQuery.or(`title.ilike.%${query}%,content.ilike.%${query}%`);
+/**
+ * DELETE ENTRY
+ * DELETE /api/entries/:id
+ */
+router.delete('/:id', authenticateToken(), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const entry = await db.getAsync(
+      'SELECT * FROM memory_entries WHERE id = ?',
+      [id]
+    );
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    if (entry.author_id !== req.user.id) {
+      return res.status(403).json({ error: 'You can only delete your own entries' });
+    }
+
+    await db.runAsync('DELETE FROM memory_entries WHERE id = ?', [id]);
+
+    res.json({ message: 'Entry deleted successfully' });
+  } catch (error) {
+    console.error('Entry delete error:', error);
+    res.status(500).json({ error: 'Failed to delete entry' });
   }
+});
 
-  dbQuery = dbQuery.order('created_at', { ascending: false });
+/**
+ * CREATE TIMELINE LINK
+ * POST /api/entries/:id/links
+ * 
+ * Flow: User "Links new insights" - creates connections between entries
+ * 
+ * Body:
+ * {
+ *   related_entry_id: uuid (required),
+ *   link_type: 'followed_from' | 'revised_by' | 'related_to' | 'built_upon' (required)
+ * }
+ */
+router.post('/:id/links', authenticateToken(), async (req, res) => {
+  try {
+    const { id: parentId } = req.params;
+    const { related_entry_id: childId, link_type = 'related_to' } = req.body;
 
-  const { data, error } = await dbQuery;
+    if (!childId) {
+      return res.status(400).json({ error: 'related_entry_id is required' });
+    }
 
-  if (error) throw error;
-  return data;
-}
+    // Verify both entries exist and user has access
+    const parentEntry = await db.getAsync(
+      `SELECT me.* FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE me.id = ? AND p.organization = ?`,
+      [parentId, req.user.organization]
+    );
 
-export async function updateMemoryEntry(id, updates) {
-  const { data, error } = await supabase
-    .from('memory_entries')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single();
+    const childEntry = await db.getAsync(
+      `SELECT me.* FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE me.id = ? AND p.organization = ?`,
+      [childId, req.user.organization]
+    );
 
-  if (error) throw error;
-  return data;
-}
+    if (!parentEntry || !childEntry) {
+      return res.status(404).json({ error: 'One or both entries not found' });
+    }
 
-export async function getMemoryEntry(id) {
-  const { data, error } = await supabase
-    .from('memory_entries')
-    .select(`
-      *,
-      author:profiles!memory_entries_author_id_fkey(full_name, department),
-      project:projects(title, id)
-    `)
-    .eq('id', id)
-    .maybeSingle();
+    // Create the link
+    try {
+      await db.runAsync(
+        `INSERT INTO timeline_links (parent_entry_id, child_entry_id, link_type, created_at)
+         VALUES (?, ?, ?, datetime('now'))`,
+        [parentId, childId, link_type]
+      );
 
-  if (error) throw error;
-  return data;
-}
+      res.status(201).json({
+        message: 'Link created successfully',
+        link: {
+          parent_entry_id: parentId,
+          child_entry_id: childId,
+          link_type: link_type
+        }
+      });
+    } catch (error) {
+      if (error.message.includes('UNIQUE constraint failed')) {
+        return res.status(409).json({ error: 'Link already exists' });
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Link creation error:', error);
+    res.status(500).json({ error: 'Failed to create link' });
+  }
+});
+
+/**
+ * GET TIMELINE FOR PROJECT
+ * GET /api/entries/timeline/:projectId
+ * 
+ * Flow: User "Sees history visually" - gets full timeline tree for a project
+ * Returns entries organized with their connections
+ */
+router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Get all entries for the project
+    const entries = await db.allAsync(
+      `SELECT me.*, 
+              p.full_name as author_name,
+              p.department as author_department
+       FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE me.project_id = ? AND p.organization = ?
+       ORDER BY me.created_at ASC`,
+      [projectId, req.user.organization]
+    );
+
+    if (entries.length === 0) {
+      return res.json({ timeline: [] });
+    }
+
+    // Get all links
+    const links = await db.allAsync(
+      `SELECT tl.* FROM timeline_links tl
+       JOIN memory_entries parent ON parent.id = tl.parent_entry_id
+       WHERE parent.project_id = ?`,
+      [projectId]
+    );
+
+    // Build a map of entries
+    const entriesMap = new Map(
+      entries.map(e => [e.id, {
+        id: e.id,
+        title: e.title,
+        content: e.content,
+        entry_type: e.entry_type,
+        status: e.status,
+        author_name: e.author_name,
+        created_at: e.created_at,
+        children: [],
+        connections: []
+      }])
+    );
+
+    // Build connections
+    links.forEach(link => {
+      const parent = entriesMap.get(link.parent_entry_id);
+      const child = entriesMap.get(link.child_entry_id);
+      
+      if (parent && child) {
+        parent.children.push({
+          id: child.id,
+          title: child.title,
+          link_type: link.link_type
+        });
+      }
+    });
+
+    // Get root entries (no parents)
+    const parentIds = new Set(links.map(l => l.parent_entry_id));
+    const timeline = Array.from(entriesMap.values()).filter(e => !parentIds.has(e.id));
+
+    res.json({ timeline });
+  } catch (error) {
+    console.error('Timeline fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch timeline' });
+  }
+});
+
+/**
+ * GET STATISTICS
+ * GET /api/entries/stats
+ * 
+ * Flow: Leaders see dashboard with:
+ * - Knowledge health (active vs archived/lesson_learned)
+ * - Team engagement (contributors, average entries per user)
+ * - Risk areas (incomplete entries, outdated knowledge)
+ */
+router.get('/stats/dashboard', authenticateToken(), async (req, res) => {
+  try {
+    // Total entries
+    const totalResult = await db.getAsync(
+      `SELECT COUNT(*) as count FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE p.organization = ?`,
+      [req.user.organization]
+    );
+
+    // Entries by status
+    const statusResult = await db.allAsync(
+      `SELECT status, COUNT(*) as count FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE p.organization = ?
+       GROUP BY status`,
+      [req.user.organization]
+    );
+
+    // Unique contributors
+    const contributorsResult = await db.getAsync(
+      `SELECT COUNT(DISTINCT author_id) as count FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE p.organization = ?`,
+      [req.user.organization]
+    );
+
+    // Entries by type
+    const typeResult = await db.allAsync(
+      `SELECT entry_type, COUNT(*) as count FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE p.organization = ?
+       GROUP BY entry_type`,
+      [req.user.organization]
+    );
+
+    // Recent entries (last 7 days)
+    const recentResult = await db.getAsync(
+      `SELECT COUNT(*) as count FROM memory_entries me
+       JOIN profiles p ON p.id = me.author_id
+       WHERE p.organization = ? AND me.created_at > datetime('now', '-7 days')`,
+      [req.user.organization]
+    );
+
+    res.json({
+      stats: {
+        totalEntries: totalResult.count,
+        activeContributors: contributorsResult.count,
+        recentEntries: recentResult.count,
+        byStatus: Object.fromEntries(statusResult.map(s => [s.status, s.count])),
+        byType: Object.fromEntries(typeResult.map(t => [t.entry_type, t.count]))
+      }
+    });
+  } catch (error) {
+    console.error('Stats fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+export default router;

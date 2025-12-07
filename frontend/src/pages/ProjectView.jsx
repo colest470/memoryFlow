@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, FileText } from 'lucide-react';
 import { getProject } from '../lib/api/projects';
-import { getProjectTimeline, createMemoryEntry } from '../lib/api/entries';
+import { entriesAPI } from '../lib/api/entries';
 import TimelineView from '../components/timeline/TimelineView';
 import EntryForm from '../components/forms/EntryForm';
 // interface ProjectViewProps {
@@ -24,7 +24,7 @@ export default function ProjectView({ projectId }) {
     try {
       const [projectData, timelineData] = await Promise.all([
         getProject(projectId),
-        getProjectTimeline(projectId),
+        entriesAPI.getProjectTimeline(projectId),
       ]);
       setProject(projectData);
       setEntries(timelineData);
@@ -36,7 +36,8 @@ export default function ProjectView({ projectId }) {
   }
 
   async function handleCreateEntry(data) {
-    await createMemoryEntry(data, parentEntryId);
+    // `EntryForm` already performs the create request and passes the created entry
+    // here as `data`. Just refresh the timeline and reset UI state.
     setShowEntryForm(false);
     setParentEntryId(undefined);
     await loadProjectData();

@@ -1,43 +1,38 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-// interface EntryFormProps {
-//   projectId: string;
-//   parentEntryId?: string;
-//   onSubmit: (entry: EntryFormData) => Promise<void>;
-//   onClose: () => void;
-// }
-
-// export interface EntryFormData {
-//   title: string;
-//   content: string;
-//   entry_type: 'proposal' | 'report' | 'meeting_note' | 'insight' | 'decision' | 'experiment' | 'outcome' | 'result';
-//   tags: string[];
-//   department?: string;
-//   project_id: string;
-// }
-
 export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose }) {
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [useAI, setUseAI] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [error, setError] = useState('');
   const [tagInput, setTagInput] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    entry_type: 'report',
+    entry_type: 'insight',
     tags: [],
-    department: profile?.department || '',
-    project_id: projectId,
+    status: 'active',
+    metadata: {
+      ai_generated_tags: [],
+      ai_summary: '',
+      ai_category: ''
+    },
+    parent_entry_id: parentEntryId || null,
+    link_type: 'followed_from'
   });
 
   useEffect(() => {
-    if (profile?.department) {
-      setFormData(prev => ({ ...prev, department: profile.department || '' }));
+    if (user?.department) {
+      setFormData(prev => ({
+        ...prev,
+        department: user.department
+      }));
     }
-  }, [profile]);
+  }, [user]);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
@@ -56,13 +51,80 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }));
   };
 
+  // Simulate AI suggestions - in production, call your AI service
+  const handleAISuggestions = async () => {
+    if (!formData.content.trim()) {
+      setError('Please enter content for AI suggestions');
+      return;
+    }
+
+    setGeneratingAI(true);
+    try {
+      // Simulate AI processing (in production, call actual AI API)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Mock AI suggestions
+      const mockSuggestions = {
+        ai_generated_tags: ['important', 'follow-up', formData.entry_type],
+        ai_summary: formData.content.substring(0, 100) + '...',
+        ai_category: formData.entry_type
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        metadata: mockSuggestions
+      }));
+    } catch (err) {
+      setError('Failed to generate AI suggestions');
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await onSubmit(formData);
+      if (!formData.title.trim()) {
+        throw new Error('Title is required');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BACKEND}/api/entries`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            content: formData.content,
+            entry_type: formData.entry_type,
+            project_id: projectId || null,
+            status: formData.status,
+            tags: formData.tags,
+            metadata: useAI ? formData.metadata : {},
+            parent_entry_id: formData.parent_entry_id,
+            link_type: formData.link_type
+          }),
+          credentials: 'include'
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create entry');
+      }
+
+      const data = await response.json();
+      
+      if (onSubmit) {
+        await onSubmit(data.entry);
+      }
+      
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create entry');
@@ -76,7 +138,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-900">
-            {parentEntryId ? 'Add Related Entry' : 'New Memory Entry'}
+            {parentEntryId ? 'Add Related Entry' : 'Add Knowledge'}
           </h2>
           <button
             onClick={onClose}
@@ -93,6 +155,22 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           )}
 
+          {/* AI Toggle */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useAI}
+                onChange={(e) => setUseAI(e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              <span className="font-medium text-slate-700 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                Use AI Assistance for suggestions
+              </span>
+            </label>
+          </div>
+
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-1">
               Title *
@@ -103,6 +181,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="What is this knowledge about?"
               required
             />
           </div>
@@ -117,13 +196,13 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               onChange={(e) => setFormData(prev => ({ ...prev, entry_type: e.target.value }))}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="proposal">Proposal</option>
               <option value="report">Report</option>
               <option value="meeting_note">Meeting Note</option>
               <option value="insight">Insight</option>
               <option value="decision">Decision</option>
               <option value="experiment">Experiment</option>
               <option value="outcome">Outcome</option>
+              <option value="proposal">Proposal</option>
               <option value="result">Result</option>
             </select>
           </div>
@@ -139,20 +218,50 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[150px]"
               placeholder="Describe the details, findings, or insights..."
             />
+            {useAI && !generatingAI && formData.content.trim() && (
+              <button
+                type="button"
+                onClick={handleAISuggestions}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" />
+                Get AI Suggestions
+              </button>
+            )}
+            {generatingAI && (
+              <p className="mt-2 text-sm text-blue-600 flex items-center gap-2">
+                <span className="animate-spin">✨</span> Generating suggestions...
+              </p>
+            )}
           </div>
 
-          <div>
-            <label htmlFor="department" className="block text-sm font-medium text-slate-700 mb-1">
-              Department
-            </label>
-            <input
-              id="department"
-              type="text"
-              value={formData.department}
-              onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          {useAI && formData.metadata.ai_generated_tags.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-medium text-slate-900 mb-3">AI Suggestions</h3>
+              <div>
+                <p className="text-sm text-slate-600 mb-2">Suggested Tags:</p>
+                <div className="flex flex-wrap gap-2">
+                  {formData.metadata.ai_generated_tags.map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (!formData.tags.includes(tag)) {
+                          setFormData(prev => ({
+                            ...prev,
+                            tags: [...prev.tags, tag]
+                          }));
+                        }
+                      }}
+                      className="px-3 py-1 bg-white border border-blue-300 text-blue-700 rounded-full text-sm hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label htmlFor="tags" className="block text-sm font-medium text-slate-700 mb-1">
@@ -196,6 +305,25 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               </div>
             )}
           </div>
+
+          {parentEntryId && (
+            <div>
+              <label htmlFor="link_type" className="block text-sm font-medium text-slate-700 mb-1">
+                How is this related?
+              </label>
+              <select
+                id="link_type"
+                value={formData.link_type}
+                onChange={(e) => setFormData(prev => ({ ...prev, link_type: e.target.value }))}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="followed_from">Followed from</option>
+                <option value="revised_by">Revised by</option>
+                <option value="related_to">Related to</option>
+                <option value="built_upon">Built upon</option>
+              </select>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
