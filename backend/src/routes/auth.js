@@ -216,5 +216,8 @@ router.post('/logout', authenticateToken(), async (req, res) => {
   }
 });
 
+router.post("/changePassword", async () => {
+
+});
 
 export default router;

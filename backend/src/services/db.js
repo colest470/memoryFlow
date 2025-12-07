@@ -28,7 +28,7 @@ const initDatabase = async () => {
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 full_name TEXT NOT NULL,
-                organization TEXT, 
+                organization TEXT,
                 department TEXT,
                 role TEXT,
                 is_verified BOOL DEFAULT TRUE,
@@ -135,18 +135,6 @@ const initDatabase = async () => {
         `);
 
         console.log("Database initialized successfully");
-
-        // Create default admin user if not exists
-        const adminExists = await db.getAsync("SELECT id FROM profiles WHERE email = 'admin@memoryflow.com'");
-        if (!adminExists) {
-            // Note: You should hash the password properly in your auth system
-            await db.runAsync(
-                "INSERT INTO profiles (email, password_hash, full_name) VALUES (?, ?, ?)",
-                ['admin@memoryflow.com', 'hashed_password_here', 'System Admin']
-            );
-            console.log("Default admin user created");
-        }
-
     } catch (error) {
         console.error("Database initialization error!", error);
     } 
