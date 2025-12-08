@@ -16,9 +16,11 @@ const initDatabase = async () => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 description TEXT,
+                created_by INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                settings JSON DEFAULT '{}'
+                settings JSON DEFAULT '{}',
+                FOREIGN KEY (created_by) REFERENCES profiles (id) ON DELETE CASCADE
             )
         `);
 

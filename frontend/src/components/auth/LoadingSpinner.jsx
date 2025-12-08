@@ -13,9 +13,4 @@ const LoadingSpinner = ({ size = 'md', className = '' }) => {
   );
 };
 
-LoadingSpinner.defaultProps = {
-  size: 'md',
-  className: ''
-};
-
 export default LoadingSpinner;

@@ -1,81 +1,111 @@
 import { useAuth } from "../../contexts/AuthContext";
 
-const { apiRequest } = useAuth;
+const API_URL = import.meta.env.VITE_API_BACKEND;
 
-export async function createProject(project) {
+const getAuthHeader = () => ({
+  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+  'Content-Type': 'application/json'
+});
+
+export async function createProject(projectData) {
   try {
-    const response = await apiRequest("/api/admin/createProject", {
-      method: "POST",
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+    const response = await fetch(`${API_URL}/api/projects`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify(projectData),
+      credentials: 'include'
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+      throw new Error(error.error || 'Failed to create project');
     }
 
     const data = await response.json();
+    return data.project;
   } catch (error) {
-      console.error("error creating organization", error);
+    console.error('Error creating project:', error);
+    throw error;
   }
 }
 
 export async function getProjects() {
   try {
-    const response = await apiRequest("/api/admin/getProjects", {
+    const response = await fetch(`${API_URL}/api/projects/`, {
       method: "GET",
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      headers: getAuthHeader(),
+      credentials: "include",
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+      throw new Error('Failed to fetch projects');
     }
 
     const data = await response.json();
+    return data.projects || [];
   } catch (error) {
-      console.error("error creating organization", error);
+    console.error('Error fetching projects:', error);
+    throw error;
   }
 }
 
 export async function getProject(id) {
-    try {
-        const response = await apiRequest("/api/admin/getProject", {
-          method: "GET",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${id}`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
-      }
-
-      const data = await response.json();
-    } catch (error) {
-        console.error("error creating organization", error);
+    if (!response.ok) {
+      throw new Error('Failed to fetch project');
     }
+
+    const data = await response.json();
+    return data.project;
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    throw error;
+  }
 }
 
 export async function updateProject(id, updates) {
-    try {
-        const response = await apiRequest("/api/admin/addUserToOrganization", {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeader(),
+      body: JSON.stringify(updates),
+      credentials: 'include'
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
-      }
-
-      const data = await response.json();
-
-      return data;
-    } catch (error) {
-        console.error("error creating organization", error);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update project');
     }
+
+    const data = await response.json();
+    return data.project;
+  } catch (error) {
+    console.error('Error updating project:', error);
+    throw error;
+  }
+}
+
+export async function deleteProject(id) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete project');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    throw error;
+  }
 }

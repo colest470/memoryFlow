@@ -2,29 +2,16 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-// interface ProjectFormProps {
-//   onSubmit: (project: ProjectFormData) => Promise<void>;
-//   onClose: () => void;
-// }
-
-// export interface ProjectFormData {
-//   title: string;
-//   description: string;
-//   department: string;
-//   organization: string;
-//   status: 'active' | 'completed' | 'archived';
-// }
-
 export default function ProjectForm({ onSubmit, onClose }) {
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState<ProjectFormData>({
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
-    department: profile?.department || '',
-    organization: profile?.organization || '',
+    department: user?.department || '',
+    organization: user?.organization || '',
     status: 'active',
   });
 

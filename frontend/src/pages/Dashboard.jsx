@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Plus, Search as SearchIcon, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjects, createProject } from '../lib/api/projects';
+import { entriesAPI } from '../lib/api/entries';
 import DashboardStats from '../components/dashboard/DashboardStats';
 import ProjectCard from '../components/projects/ProjectCard';
 import ProjectForm from '../components/projects/ProjectForm';
 
 export default function Dashboard() {
-  const { profile, signOut, loadData } = useAuth();
+  const { user, signOut } = useAuth();
   const [projects, setProjects] = useState([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [stats, setStats] = useState({
@@ -20,12 +21,39 @@ export default function Dashboard() {
   const [activeView, setActiveView] = useState('projects');
 
   useEffect(() => {
-    // loadData();
+    loadDashboardData();
   }, []);
 
+  async function loadDashboardData() {
+    setLoading(true);
+    try {
+      const projectsData = await getProjects();
+      setProjects(projectsData || []);
+
+      const statsData = await entriesAPI.getStats();
+      if (statsData && statsData.stats) {
+        setStats({
+          totalEntries: statsData.stats.totalEntries || 0,
+          activeProjects: projectsData?.filter(p => p.status === 'active').length || 0,
+          contributors: statsData.stats.totalAuthors || 0,
+          lessonLearned: statsData.stats.lessonLearnedCount || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleCreateProject(data) {
-    await createProject(data);
-    await loadData();
+    try {
+      await createProject(data);
+      setShowProjectForm(false);
+      await loadDashboardData();
+    } catch (error) {
+      console.error('Error creating project:', error);
+    }
   }
 
   function handleSelectProject(id) {
@@ -51,13 +79,13 @@ export default function Dashboard() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">MemoryFlow</h1>
               <p className="text-sm text-slate-600">
-                {profile?.organization} {profile?.department && `· ${profile.department}`}
+                {user?.organization} {user?.department && `· ${user.department}`}
               </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-slate-900">{profile?.full_name}</p>
-                <p className="text-xs text-slate-600 capitalize">{profile?.role}</p>
+                <p className="text-sm font-medium text-slate-900">{user?.full_name}</p>
+                <p className="text-xs text-slate-600 capitalize">{user?.role}</p>
               </div>
               <button
                 onClick={signOut}

@@ -1,38 +1,44 @@
-import { useAuth } from "../../contexts/AuthContext";
+const API_URL = import.meta.env.VITE_API_BACKEND;
+
+const getAuthHeader = () => ({
+  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+  'Content-Type': 'application/json'
+});
 
 export const loadData = async () => {
-try {
+  try {
+    // Fetch user profile
+    const userResponse = await fetch(`${API_URL}/api/user/profile`, {
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
     
-} catch (error) {
+    if (!userResponse.ok) {
+      throw new Error('Failed to load user profile');
+    }
     
+    const userData = await userResponse.json();
+    return userData.user;
+  } catch (error) {
+    console.error('Error loading user data:', error);
+    return null;
+  }
 }
+
+export const getUserProfile = async () => {
+  try {
+    const response = await fetch(`${API_URL}/api/user/profile`, {
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user profile');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
+  }
 }
-
-// try {
-//     const projectsData = await getProjects();
-//     setProjects(projectsData || []);
-
-//     const { count: entriesCount } = await supabase
-//     .from('memory_entries')
-//     .select('*', { count: 'exact', head: true });
-
-//     const { count: lessonsCount } = await supabase
-//     .from('memory_entries')
-//     .select('*', { count: 'exact', head: true })
-//     .eq('status', 'lesson_learned');
-
-//     const { data: contributorsData } = await supabase
-//     .from('profiles')
-//     .select('id');
-
-//     setStats({
-//     totalEntries: entriesCount || 0,
-//     activeProjects: projectsData?.filter(p => p.status === 'active').length || 0,
-//     contributors: contributorsData?.length || 0,
-//     lessonLearned: lessonsCount || 0,
-//     });
-// } catch (error) {
-//     console.error('Error loading data:', error);
-// } finally {
-//     setLoading(false);
-// }

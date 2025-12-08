@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import ProjectView from './pages/ProjectView';
 import SearchPage from './pages/SearchPage';
-import { useEffect, useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import SignUp from './components/auth/Signup';
 import Login from './components/auth/LogIn';
@@ -23,6 +22,19 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
+
+          <Route path='/projects' element={
+            <ProtectedRoute>
+              <ProjectView />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/search' element={
+            <ProtectedRoute>
+              <SearchPage />
+            </ProtectedRoute>
+          } />
+          
         </Routes>
       </Router>
     </AuthProvider>
