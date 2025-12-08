@@ -134,6 +134,27 @@ const initDatabase = async () => {
             )
         `);
 
+        await db.runAsync(`
+            CREATE TABLE IF NOT EXISTS embeddings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                memory_entry_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+                vector BLOB NOT NULL, -- store serialized embedding
+                model TEXT DEFAULT 'text-embedding-3-large',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await db.runAsync(`    
+        CREATE TABLE IF NOT EXISTS user_memory_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES profiles(id),
+            memory_entry_id INTEGER NOT NULL REFERENCES memory_entries(id),
+            action_type TEXT CHECK(action_type IN ('view', 'edit', 'reuse', 'share', 'feedback')),
+            metadata TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        `);
+
         console.log("Database initialized successfully");
     } catch (error) {
         console.error("Database initialization error!", error);

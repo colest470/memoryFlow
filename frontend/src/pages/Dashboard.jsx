@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Plus, Search as SearchIcon, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjects, createProject } from '../lib/api/projects';
-import { supabase } from '../lib/supabase';
 import DashboardStats from '../components/dashboard/DashboardStats';
 import ProjectCard from '../components/projects/ProjectCard';
 import ProjectForm from '../components/projects/ProjectForm';

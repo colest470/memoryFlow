@@ -1,61 +1,81 @@
-import { supabase } from '../supabase';
-// import type { Database } from '../types/database';
+import { useAuth } from "../../contexts/AuthContext";
 
-// type Project = Database['public']['Tables']['projects']['Row'];
-// type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
+const { apiRequest } = useAuth;
 
 export async function createProject(project) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  try {
+    const response = await apiRequest("/api/admin/createProject", {
+      method: "POST",
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({
-      ...project,
-      owner_id: user.id,
-    })
-    .select()
-    .single();
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+    }
 
-  if (error) throw error;
-  return data;
+    const data = await response.json();
+  } catch (error) {
+      console.error("error creating organization", error);
+  }
 }
 
 export async function getProjects() {
-  const { data, error } = await supabase
-    .from('projects')
-    .select(`
-      *,
-      owner:profiles!projects_owner_id_fkey(full_name, department)
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    const response = await apiRequest("/api/admin/getProjects", {
+      method: "GET",
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
 
-  if (error) throw error;
-  return data;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+    }
+
+    const data = await response.json();
+  } catch (error) {
+      console.error("error creating organization", error);
+  }
 }
 
 export async function getProject(id) {
-  const { data, error } = await supabase
-    .from('projects')
-    .select(`
-      *,
-      owner:profiles!projects_owner_id_fkey(full_name, department)
-    `)
-    .eq('id', id)
-    .maybeSingle();
+    try {
+        const response = await apiRequest("/api/admin/getProject", {
+          method: "GET",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
 
-  if (error) throw error;
-  return data;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+      }
+
+      const data = await response.json();
+    } catch (error) {
+        console.error("error creating organization", error);
+    }
 }
 
 export async function updateProject(id, updates) {
-  const { data, error } = await supabase
-    .from('projects')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+    try {
+        const response = await apiRequest("/api/admin/addUserToOrganization", {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
 
-  if (error) throw error;
-  return data;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
+      }
+
+      const data = await response.json();
+
+      return data;
+    } catch (error) {
+        console.error("error creating organization", error);
+    }
 }
