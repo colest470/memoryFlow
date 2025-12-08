@@ -23,19 +23,18 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const response = await apiRequest(`/api/user/profile`);
-          setLoading(true);
           
           if (response.ok) {
-            setLoading(false);
             const data = await response.json();
-            console.log(data, ":profile");
             setUser(data.user);
+            console.log(user);
           }
         } catch (error) {
           console.error('Session check failed:', error);
         }
       }
       
+      setLoading(false);
     };
   
     initAuth();
@@ -56,7 +55,7 @@ export const AuthProvider = ({ children }) => {
 
     let response = await fetch(`${backendURL}${url}`, config);
 
-    if (response.status === 401 && token) { // unautharized
+    if (response.status === 401 && token) {
       try {
         const refreshResponse = await fetch(`${backendURL}/api/auth/refresh`, {
           method: "POST",
@@ -102,7 +101,7 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, fullName, password, confirmPassword, organization, department, role }),
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         console.log(error);
@@ -141,28 +140,42 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const logout = async () => {
-    try {
-      const role = localStorage.getItem("role");
-      await apiRequest('/api/auth/logout', {
-         method: 'POST',
+    async function loadData() {
+      try {
+        const projectsData = await getProjects();
+        setProjects(projectsData || []);
+  
+        const { count: entriesCount } = await supabase
+          .from('memory_entries')
+          .select('*', { count: 'exact', head: true });
+  
+        const { count: lessonsCount } = await supabase
+          .from('memory_entries')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'lesson_learned');
+  
+        const { data: contributorsData } = await supabase
+          .from('profiles')
+          .select('id');
+  
+        setStats({
+          totalEntries: entriesCount || 0,
+          activeProjects: projectsData?.filter(p => p.status === 'active').length || 0,
+          contributors: contributorsData?.length || 0,
+          lessonLearned: lessonsCount || 0,
         });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem("role");
-      setUser(null);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  };
 
   const value = {
     user,
-    loading,
-    apiRequest,
     register,
     login,
-    logout,
+    loadData,
   }
 
   return (

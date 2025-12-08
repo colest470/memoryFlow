@@ -2,6 +2,8 @@ import express from "express";
 import { promisify } from 'util';
 import { authenticateToken } from "../../middleware/tokens.js";
 import db from "../services/db.js";
+import { generateEmbedding, getEmbedding, findSimilarEntries } from "../services/embeddings.js";
+import { recordAction, getActionHistory, getUserActivitySummary, getMostReusedEntries } from "../services/actions.js";
 
 db.getAsync = promisify(db.get.bind(db));
 db.allAsync = promisify(db.all.bind(db));
@@ -698,9 +700,307 @@ router.get('/stats/dashboard', authenticateToken(), async (req, res) => {
         byType: Object.fromEntries(typeResult.map(t => [t.entry_type, t.count]))
       }
     });
+    } catch (error) {
+      console.error('Stats fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+  });
+
+/**
+ * SEMANTIC SEARCH
+ * POST /api/entries/search/semantic
+ * 
+ * Search using vector embeddings (cosine similarity)
+ * Body: { query: string, limit?: number, minSimilarity?: number (0-1) }
+ */
+router.post('/search/semantic', authenticateToken(), async (req, res) => {
+  try {
+    const { query, limit = 10, minSimilarity = 0.3 } = req.body;
+    
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({ error: 'Query text is required' });
+    }
+    
+    // Get user's organization
+    const user = await db.getAsync(
+      'SELECT organization FROM profiles WHERE id = ?',
+      [req.user.id]
+    );
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Generate embedding for query
+    const { generateMockEmbedding } = await import('../services/embeddings.js');
+    const queryEmbedding = (await import('../services/embeddings.js')).cosineSimilarity;
+    const embedding = (await import('../services/embeddings.js')).generateMockEmbedding || 
+      ((text) => {
+        const words = text.toLowerCase().split(/\W+/).filter(w => w.length > 0);
+        const emb = new Array(384).fill(0);
+        words.forEach((word, idx) => {
+          let hash = 0;
+          for (let i = 0; i < word.length; i++) {
+            hash = ((hash << 5) - hash) + word.charCodeAt(i);
+            hash = hash & hash;
+          }
+          emb[idx % 384] += (hash / 2147483647);
+        });
+        const mag = Math.sqrt(emb.reduce((sum, x) => sum + x * x, 0));
+        if (mag > 0) {
+          for (let i = 0; i < emb.length; i++) {
+            emb[i] /= mag;
+          }
+        }
+        return emb;
+      });
+    
+    const queryVector = embedding(query);
+    
+    // Find similar entries
+    const results = await findSimilarEntries(queryVector, user.organization, limit, minSimilarity);
+    
+    res.json({
+      query,
+      results,
+      count: results.length
+    });
   } catch (error) {
-    console.error('Stats fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
+    console.error('Semantic search error:', error);
+    res.status(500).json({ error: 'Semantic search failed' });
+  }
+});
+
+/**
+ * RECORD USER ACTION
+ * POST /api/entries/:id/action
+ * 
+ * Track user interactions: reuse, share, edit, rate, view
+ * Body: { action_type: 'reuse'|'share'|'edit'|'rate'|'view', rating?: 1-5 }
+ */
+router.post('/:id/action', authenticateToken(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action_type, rating } = req.body;
+    
+    if (!action_type) {
+      return res.status(400).json({ error: 'action_type is required' });
+    }
+    
+    // Validate action type
+    const validActions = ['reuse', 'share', 'edit', 'rate', 'view'];
+    if (!validActions.includes(action_type)) {
+      return res.status(400).json({ error: `Invalid action_type. Must be one of: ${validActions.join(', ')}` });
+    }
+    
+    // Verify entry exists and user has access
+    const entry = await db.getAsync(
+      `SELECT me.id FROM memory_entries me
+       JOIN profiles p ON me.author_id = p.id
+       WHERE me.id = ? AND p.organization = (SELECT organization FROM profiles WHERE id = ?)`,
+      [id, req.user.id]
+    );
+    
+    if (!entry) {
+      return res.status(404).json({ error: 'Entry not found or not accessible' });
+    }
+    
+    // Record action
+    const action = await recordAction(req.user.id, id, action_type, {
+      rating: action_type === 'rate' ? rating : null
+    });
+    
+    res.json({
+      success: true,
+      action
+    });
+  } catch (error) {
+    console.error('Record action error:', error);
+    res.status(500).json({ error: 'Failed to record action' });
+  }
+});
+
+/**
+ * GET ACTION HISTORY
+ * GET /api/entries/:id/actions
+ * 
+ * Retrieve all actions recorded for an entry
+ * Query: ?limit=100&actionType=reuse
+ */
+router.get('/:id/actions', authenticateToken(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 100, actionType } = req.query;
+    
+    // Verify entry exists and user has access
+    const entry = await db.getAsync(
+      `SELECT me.id FROM memory_entries me
+       JOIN profiles p ON me.author_id = p.id
+       WHERE me.id = ? AND p.organization = (SELECT organization FROM profiles WHERE id = ?)`,
+      [id, req.user.id]
+    );
+    
+    if (!entry) {
+      return res.status(404).json({ error: 'Entry not found or not accessible' });
+    }
+    
+    // Get action history
+    const actions = await getActionHistory(id, {
+      actionType,
+      limit: Math.min(parseInt(limit) || 100, 1000)
+    });
+    
+    res.json({
+      memory_entry_id: id,
+      actions,
+      count: actions.length
+    });
+  } catch (error) {
+    console.error('Get actions error:', error);
+    res.status(500).json({ error: 'Failed to fetch action history' });
+  }
+});
+
+/**
+ * GET USER ACTIVITY SUMMARY
+ * GET /api/entries/user/activity
+ * 
+ * Get user's activity metrics and top entries
+ */
+router.get('/user/activity', authenticateToken(), async (req, res) => {
+  try {
+    const user = await db.getAsync(
+      'SELECT organization FROM profiles WHERE id = ?',
+      [req.user.id]
+    );
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const summary = await getUserActivitySummary(req.user.id, user.organization);
+    
+    res.json(summary);
+  } catch (error) {
+    console.error('Activity summary error:', error);
+    res.status(500).json({ error: 'Failed to fetch activity summary' });
+  }
+});
+
+/**
+ * GET SIMILARITY GRAPH
+ * GET /api/entries/:id/graph
+ * 
+ * Get related entries, analytics, and recommendation data
+ * Returns: { entry, related_entries, analytics, recommendations }
+ */
+router.get('/:id/graph', authenticateToken(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the entry with full details
+    const entry = await db.getAsync(
+      `SELECT me.* FROM memory_entries me
+       JOIN profiles p ON me.author_id = p.id
+       WHERE me.id = ? AND p.organization = (SELECT organization FROM profiles WHERE id = ?)`,
+      [id, req.user.id]
+    );
+    
+    if (!entry) {
+      return res.status(404).json({ error: 'Entry not found or not accessible' });
+    }
+    
+    // Get related entries via timeline links
+    const related = await db.allAsync(
+      `SELECT me.id, me.title, me.entry_type, me.created_at, tl.link_type
+       FROM memory_entries me
+       JOIN timeline_links tl ON (
+         (tl.parent_entry_id = ? AND tl.child_entry_id = me.id) OR
+         (tl.child_entry_id = ? AND tl.parent_entry_id = me.id)
+       )
+       WHERE me.status = 'active'
+       ORDER BY me.created_at DESC
+       LIMIT 20`,
+      [id, id]
+    );
+    
+    // Get action analytics
+    const actions = await db.getAsync(
+      `SELECT 
+        COUNT(CASE WHEN action_type = 'reuse' THEN 1 END) as reuse_count,
+        COUNT(CASE WHEN action_type = 'share' THEN 1 END) as share_count,
+        COUNT(CASE WHEN action_type = 'view' THEN 1 END) as view_count,
+        AVG(CASE WHEN action_type = 'rate' THEN rating END) as avg_rating,
+        COUNT(DISTINCT CASE WHEN action_type = 'rate' THEN 1 END) as rating_count
+       FROM user_memory_actions
+       WHERE memory_entry_id = ?`,
+      [id]
+    );
+    
+    res.json({
+      entry,
+      related_entries: related || [],
+      analytics: {
+        reuse_count: actions?.reuse_count || 0,
+        share_count: actions?.share_count || 0,
+        view_count: actions?.view_count || 0,
+        avg_rating: actions?.avg_rating || null,
+        rating_count: actions?.rating_count || 0
+      }
+    });
+  } catch (error) {
+    console.error('Graph fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch similarity graph' });
+  }
+});
+
+/**
+ * GET ORGANIZATION INSIGHTS
+ * GET /api/entries/insights/organization
+ * 
+ * Returns org-level analytics: most reused, low-rated, trending entries
+ */
+router.get('/insights/organization', authenticateToken(), async (req, res) => {
+  try {
+    const user = await db.getAsync(
+      'SELECT organization FROM profiles WHERE id = ?',
+      [req.user.id]
+    );
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get most reused entries
+    const mostReused = await getMostReusedEntries(user.organization, 10);
+    
+    // Get trending (recently created, high engagement)
+    const trending = await db.allAsync(
+      `SELECT 
+        me.id, me.title, me.created_at,
+        COUNT(CASE WHEN uma.action_type = 'reuse' THEN 1 END) as reuse_count,
+        COUNT(CASE WHEN uma.action_type = 'share' THEN 1 END) as share_count
+       FROM memory_entries me
+       LEFT JOIN user_memory_actions uma ON me.id = uma.memory_entry_id
+       WHERE EXISTS (
+         SELECT 1 FROM profiles p
+         WHERE p.id = me.author_id AND p.organization = ?
+       )
+       AND me.created_at > datetime('now', '-7 days')
+       GROUP BY me.id
+       ORDER BY (reuse_count + share_count) DESC
+       LIMIT 10`,
+      [user.organization]
+    );
+    
+    res.json({
+      organization: user.organization,
+      most_reused: mostReused || [],
+      trending: trending || []
+    });
+  } catch (error) {
+    console.error('Organization insights error:', error);
+    res.status(500).json({ error: 'Failed to fetch organization insights' });
   }
 });
 
