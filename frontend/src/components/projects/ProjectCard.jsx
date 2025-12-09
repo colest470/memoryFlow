@@ -1,20 +1,5 @@
 import { Clock, User, Folder } from 'lucide-react';
-
-// interface ProjectCardProps {
-//   project: {
-//     id: string;
-//     title: string;
-//     description: string | null;
-//     status: string;
-//     department: string | null;
-//     created_at: string;
-//     owner: {
-//       full_name: string;
-//       department: string | null;
-//     };
-//   };
-//   onSelect: (id: string) => void;
-// }
+import { useNavigate } from 'react-router-dom';
 
 export default function ProjectCard({ project, onSelect }) {
   const statusColors = {
@@ -22,6 +7,8 @@ export default function ProjectCard({ project, onSelect }) {
     completed: 'bg-blue-100 text-blue-800 border-blue-200',
     archived: 'bg-slate-100 text-slate-800 border-slate-200',
   };
+
+  const navigate = useNavigate();
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -34,7 +21,7 @@ export default function ProjectCard({ project, onSelect }) {
 
   return (
     <div
-      onClick={() => onSelect(project.id)}
+      onClick={() => navigate(`/projects/${project.id}`)}
       className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between mb-3">
@@ -65,7 +52,7 @@ export default function ProjectCard({ project, onSelect }) {
       <div className="flex items-center gap-4 text-sm text-slate-600">
         <div className="flex items-center gap-1">
           <User className="w-4 h-4" />
-          {project.owner.full_name}
+          {project.owner_name}
         </div>
         <div className="flex items-center gap-1">
           <Clock className="w-4 h-4" />

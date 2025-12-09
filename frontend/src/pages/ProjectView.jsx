@@ -4,17 +4,17 @@ import { getProject } from '../lib/api/projects';
 import { entriesAPI } from '../lib/api/entries';
 import TimelineView from '../components/timeline/TimelineView';
 import EntryForm from '../components/forms/EntryForm';
-// interface ProjectViewProps {
-//   projectId: string;
-// }
+import { useParams, useNavigate } from 'react-router-dom';
 
-export default function ProjectView({ projectId }) {
+export default function ProjectView() {
+  const { projectId } = useParams();
   const [project, setProject] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [parentEntryId, setParentEntryId] = useState(undefined);
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProjectData();
@@ -70,7 +70,7 @@ export default function ProjectView({ projectId }) {
           <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-600">Project not found</p>
           <button
-            onClick={() => window.location.hash = ''}
+            onClick={() => navigate('/dashboard')}
             className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
           >
             Back to Dashboard
@@ -118,7 +118,7 @@ export default function ProjectView({ projectId }) {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
               <h2 className="text-xl font-semibold text-slate-900 mb-6">Memory Timeline</h2>
-              {entries.length === 0 ? (
+              {entries?.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                   <p className="text-slate-600 mb-4">No entries yet</p>
@@ -155,7 +155,7 @@ export default function ProjectView({ projectId }) {
                 )}
                 <div>
                   <p className="text-slate-600">Owner</p>
-                  <p className="font-medium text-slate-900">{project.owner.full_name}</p>
+                  <p className="font-medium text-slate-900">{project.owner_name}</p>
                 </div>
                 <div>
                   <p className="text-slate-600">Total Entries</p>

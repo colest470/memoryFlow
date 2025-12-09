@@ -62,6 +62,7 @@ export async function getProject(id) {
     }
 
     const data = await response.json();
+    console.log('Fetched project:', data);
     return data.project;
   } catch (error) {
     console.error('Error fetching project:', error);

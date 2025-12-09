@@ -574,16 +574,24 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
   try {
     const { projectId } = req.params;
 
+    const org = await db.getAsync(
+      'SELECT organization_id FROM user_organizations WHERE user_id = ?',
+      [req.user.id]
+    );
+
     // Get all entries for the project
     const entries = await db.allAsync(
       `SELECT me.*, 
               p.full_name as author_name,
-              p.department as author_department
-       FROM memory_entries me
-       JOIN profiles p ON p.id = me.author_id
-       WHERE me.project_id = ? AND p.organization = ?
-       ORDER BY me.created_at ASC`,
-      [projectId, req.user.organization]
+              p.department as author_department,
+              pr.title as project_title
+      FROM memory_entries me
+      JOIN profiles p ON p.id = me.author_id
+      JOIN projects pr ON pr.id = me.project_id
+      WHERE me.project_id = ? 
+        AND pr.organization_id = ?
+      ORDER BY me.created_at ASC`,
+      [projectId, org.organization_id]
     );
 
     if (entries.length === 0) {

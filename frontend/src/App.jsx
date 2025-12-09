@@ -23,7 +23,13 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path='/projects' element={
+          <Route path='/search' element={
+            <ProtectedRoute>
+              <SearchPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/projects/:projectId' element={
             <ProtectedRoute>
               <ProjectView />
             </ProtectedRoute>
@@ -34,13 +40,24 @@ function App() {
               <SearchPage />
             </ProtectedRoute>
           } />
-          
+
+          <Route path='/projects/:projectId' element={
+            <ProtectedRoute>
+              <ProjectView />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/search' element={
+            <ProtectedRoute>
+              <SearchPage />
+            </ProtectedRoute>
+}
+          />
         </Routes>
       </Router>
     </AuthProvider>
-  )
+  );
 }
-
 export default App;
 
 

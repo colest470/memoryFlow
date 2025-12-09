@@ -25,32 +25,20 @@ router.post('/', authenticateToken(), async (req, res) => {
     }
 
     // Get user's organization
-    const user = await db.getAsync(
-      'SELECT organization FROM profiles WHERE id = ?',
+    const org = await db.getAsync(
+      'SELECT * FROM user_organizations WHERE user_id = ?',
       [req.user.id]
     );
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (!org) {
+      return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const org = await db.runAsync(`
-      INSERT INTO organizations (name, description, created_by)
-       VALUES (?, ?)`,
-      [req.user.organization, description || null, req.user.department, req.user.id]
-    ); 
-
-    const userOrg = await db.runAsync(`
-      INSERT INTO user_organizations (user_id, organization_id, role, department)
-       VALUES (?, ?, ?, ?)`,
-      [req.user.id, org.lastID, "admin", department || null]
-    ); 
-
     const result = await db.runAsync(
-      `INSERT INTO projects (title, description, department, organization_id, status)
-       VALUES (?, ?, ?, ?, ?)`,
-      [title, description || null, department || null, org.lastID, status]
-    ); // organization_id is null because there are no such entries
+      `INSERT INTO projects (title, description, department, organization_id, status, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [title, description || null, department || null, org.organization_id, status, req.user.id]
+    );
 
     const project = await db.getAsync(
       'SELECT * FROM projects WHERE id = ?',
@@ -85,12 +73,12 @@ router.get('/', authenticateToken(), async (req, res) => {
   try {
     // Get user's organization
     const user = await db.getAsync(
-      'SELECT organization FROM profiles WHERE id = ?',
+      'SELECT user_id, role, organization_id FROM user_organizations WHERE id = ?',
       [req.user.id]
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Organization not found' });
     }
 
     const projects = await db.allAsync(
@@ -100,7 +88,7 @@ router.get('/', authenticateToken(), async (req, res) => {
        FROM projects p
        WHERE p.organization_id  = ?
        ORDER BY p.created_at DESC`,
-      [user.organization]
+      [user.organization_id]
     );
 
     res.json({
@@ -122,19 +110,32 @@ router.get('/:id', authenticateToken(), async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verify user has access to this project's organization
-    const user = await db.getAsync(
-      'SELECT organization FROM profiles WHERE id = ?',
+    const orgId = await db.getAsync(
+      'SELECT organization_id FROM user_organizations WHERE user_id = ?',
       [req.user.id]
     );
+
+    if (!orgId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Verify user has access to this project's organization
+    const user = await db.getAsync(
+      'SELECT organization_id FROM projects WHERE created_by = ?',
+      [req.user.id]
+    );
+
+    if (user.organization_id !== orgId.organization_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
 
     const project = await db.getAsync(
       `SELECT p.*, 
         (SELECT COUNT(*) FROM memory_entries WHERE project_id = p.id AND status = 'active') as entry_count,
-        (SELECT full_name FROM profiles WHERE id = p.owner_id) as owner_name
+        (SELECT full_name FROM profiles WHERE id = p.created_by) as owner_name
        FROM projects p
-       WHERE p.id = ? AND p.organization = ?`,
-      [id, user.organization]
+       WHERE p.id = ? AND p.organization_id = ?`,
+      [id, user.organization_id]
     );
 
     if (!project) {

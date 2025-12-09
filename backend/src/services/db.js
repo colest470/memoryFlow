@@ -56,7 +56,7 @@ const initDatabase = async () => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
                 organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-                role TEXT NOT NULL CHECK (role IN ('admin', 'member', 'manager', 'viewer')),
+                role TEXT NOT NULL CHECK (role IN ('admin', 'member', 'viewer')),
                 department TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

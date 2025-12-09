@@ -63,7 +63,23 @@ router.post("/register", [
         const saltRounds = 12;
         const passwordHash = await bycrypt.hash(password, saltRounds);
 
-        let result = await db.runAsync(`INSERT INTO profiles (email, password_hash, full_name, organization, department, role) values (?, ?, ?, ?, ?, ?)`, [email, passwordHash, fullName, organization, department, role]);
+        let result = await db.runAsync(`
+          INSERT INTO profiles (email, password_hash, full_name, organization, department, role) 
+          values (?, ?, ?, ?, ?, ?)`,
+           [email, passwordHash, fullName, organization, department, role]
+        );
+
+        const org = await db.runAsync(`
+          INSERT INTO organizations (name, description, created_by)
+            VALUES (?, ?, ?)`,
+          [organization, null, result.lastID]
+        );
+
+        await db.runAsync(`
+          INSERT INTO user_organizations (user_id, organization_id, role, department)
+            VALUES (?, ?, ?, ?)`,
+          [result.lastID, org.lastID, "admin", department || null]
+        );
 
         res.status(201).json({ 
             message: 'User registered successfully.',

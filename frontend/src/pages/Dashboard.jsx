@@ -30,6 +30,8 @@ export default function Dashboard() {
       const projectsData = await getProjects();
       setProjects(projectsData || []);
 
+      console.log('Projects data:', projectsData);
+
       const statsData = await entriesAPI.getStats();
       if (statsData && statsData.stats) {
         setStats({
