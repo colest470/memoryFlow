@@ -63,14 +63,18 @@ router.post('/', authenticateToken(), async (req, res) => {
       return res.status(400).json({ error: 'Title is required' });
     }
 
+    const org = await db.getAsync(`
+      SELECT organization_id FROM projects WHERE id = ?
+    `, [project_id])
+
     const user = req.user;
     const tagsArray = Array.isArray(tags) ? tags : [];
 
     // Insert the memory entry
     const result = await db.runAsync(
       `INSERT INTO memory_entries 
-       (title, content, entry_type, project_id, author_id, status, department, tags, metadata, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      (title, content, entry_type, project_id, author_id, status, department, tags, metadata, created_at, updated_at, organization_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)`,
       [
         title,
         content || null,
@@ -80,7 +84,8 @@ router.post('/', authenticateToken(), async (req, res) => {
         status,
         user.department || null,
         JSON.stringify(tagsArray),
-        JSON.stringify(metadata || {})
+        JSON.stringify(metadata || {}),
+        org.organization_id
       ]
     );
 
@@ -90,7 +95,7 @@ router.post('/', authenticateToken(), async (req, res) => {
     if (parent_entry_id) {
       try {
         await db.runAsync(
-          `INSERT INTO timeline_links (parent_entry_id, child_entry_id, link_type, created_at)
+          `INSERT INTO entry_links (parent_entry_id, child_entry_id, link_type, created_at)
            VALUES (?, ?, ?, datetime('now'))`,
           [parent_entry_id, entryId, link_type]
         );
@@ -600,7 +605,7 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
 
     // Get all links
     const links = await db.allAsync(
-      `SELECT tl.* FROM timeline_links tl
+      `SELECT tl.* FROM entry_links tl
        JOIN memory_entries parent ON parent.id = tl.parent_entry_id
        WHERE parent.project_id = ?`,
       [projectId]

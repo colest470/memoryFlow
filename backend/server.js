@@ -9,6 +9,7 @@ import authRoutes from "./src/routes/auth.js";
 import userRoutes from "./src/routes/user.js";
 import projectRoutes from "./src/routes/projects.js";
 import entriesRoutes from "./src/routes/entries.js";
+import aiRoutes from "./src/routes/ai.js"
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/entries", entriesRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.get('/api/health', (req, res) => {
 	res.json({ status: 'ok' });

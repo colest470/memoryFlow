@@ -87,7 +87,7 @@ export default function ProjectView() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => window.location.hash = ''}
+                onClick={() => window.history.back()}
                 className="text-slate-600 hover:text-slate-900 transition-colors"
               >
                 <ArrowLeft className="w-6 h-6" />

@@ -6,7 +6,6 @@ const getAuthHeader = () => ({
 });
 
 export const entriesAPI = {
-  // Create a new entry
   async createEntry(entryData) {
     const response = await fetch(`${API_URL}/api/entries`, {
       method: 'POST',

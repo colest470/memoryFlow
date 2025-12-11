@@ -45,8 +45,6 @@ router.post('/', authenticateToken(), async (req, res) => {
       [result.lastID]
     );
 
-    console.log(project);
-
     res.status(201).json({
       success: true,
       project: {
