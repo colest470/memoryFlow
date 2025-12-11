@@ -1,28 +1,11 @@
 import { Clock, User, Tag, FileText } from 'lucide-react';
-
-// interface SearchResult {
-//   id: string;
-//   title: string;
-//   content: string | null;
-//   entry_type: string;
-//   created_at: string;
-//   tags: string[];
-//   author: {
-//     full_name: string;
-//     department: string | null;
-//   };
-//   project?: {
-//     title: string;
-//   } | null;
-// }
-
-// interface SearchResultsProps {
-//   results: SearchResult[];
-//   onSelectEntry: (id: string) => void;
-//   loading?: boolean;
-// }
+import { useNavigate } from 'react-router-dom';
 
 export default function SearchResults({ results, onSelectEntry, loading }) {
+  // Extract entries from the results object, or use empty array if invalid
+  const entries = results?.entries || [];
+  const navigate = useNavigate();
+  
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
@@ -52,7 +35,7 @@ export default function SearchResults({ results, onSelectEntry, loading }) {
     );
   }
 
-  if (results.length === 0) {
+  if (!entries || entries.length === 0) {
     return (
       <div className="text-center py-12">
         <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
@@ -64,11 +47,13 @@ export default function SearchResults({ results, onSelectEntry, loading }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Found {results.length} {results.length === 1 ? 'result' : 'results'}
+        Found {entries.length} {entries.length === 1 ? 'result' : 'results'}
+        {results?.pagination?.total && results.pagination.total > entries.length && 
+          ` of ${results.pagination.total} total`}
       </p>
 
       <div className="space-y-3">
-        {results.map((result) => (
+        {entries.map((result) => (
           <div
             key={result.id}
             onClick={() => onSelectEntry(result.id)}
@@ -79,7 +64,7 @@ export default function SearchResults({ results, onSelectEntry, loading }) {
                 {result.title}
               </h3>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${entryTypeColors[result.entry_type] || 'bg-slate-100 text-slate-800'}`}>
-                {result.entry_type.replace('_', ' ')}
+                {result.entry_type?.replace('_', ' ') || result.entry_type}
               </span>
             </div>
 
@@ -96,17 +81,17 @@ export default function SearchResults({ results, onSelectEntry, loading }) {
               </div>
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4" />
-                {result.author.full_name}
+                {result.author_name || 'Unknown Author'}
               </div>
-              {result.project && (
+              {result.project_id && (
                 <div className="flex items-center gap-1">
                   <FileText className="w-4 h-4" />
-                  {result.project.title}
+                  Project #{result.project_id}
                 </div>
               )}
             </div>
 
-            {result.tags.length > 0 && (
+            {result.tags && result.tags.length > 0 && (
               <div className="flex items-center gap-2 mt-3">
                 <Tag className="w-4 h-4 text-slate-400" />
                 <div className="flex flex-wrap gap-2">
@@ -129,3 +114,9 @@ export default function SearchResults({ results, onSelectEntry, loading }) {
     </div>
   );
 }
+
+SearchResults.defaultProps = {
+  results: { entries: [] },
+  loading: false,
+  onSelectEntry: () => {},
+};

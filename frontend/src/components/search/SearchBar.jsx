@@ -15,7 +15,7 @@ import { Search, Filter, X } from 'lucide-react';
 export default function SearchBar({ onSearch, showFilters = true }) {
   const [query, setQuery] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [filters, setFilters] = useState<SearchFilters>({});
+  const [filters, setFilters] = useState({});
 
   const handleSearch = () => {
     onSearch(query, filters);
