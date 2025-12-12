@@ -1,17 +1,18 @@
 import express from "express";
-import { authenticateToken } from "../../middleware/tokens";
+import { authenticateToken } from "../../middleware/tokens.js";
 import { promisify } from "util";
+import db from "../services/db.js";
 
 db.getAsync = promisify(db.get.bind(db));
 db.allAsync = promisify(db.all.bind(db));
 
 db.runAsync = (sql, params) => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) return reject(err);
-      resolve({ lastID: this.lastID, changes: this.changes });
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) return reject(err);
+            resolve({ lastID: this.lastID, changes: this.changes });
+        });
     });
-  });
 };
 
 const router = express.Router();
@@ -85,3 +86,5 @@ async function updateUserRole(userId, organizationId, newRole, adminUserId) {
         [newRole, userId, organizationId]
     );
 }
+
+export default router;

@@ -4,6 +4,7 @@ import { authenticateToken } from "../../middleware/tokens.js";
 import db from "../services/db.js";
 import { generateEmbedding, getEmbedding, findSimilarEntries } from "../services/embeddings.js";
 import { recordAction, getActionHistory, getUserActivitySummary, getMostReusedEntries } from "../services/actions.js";
+import { analyzeContent } from '../services/ai.js';
 
 db.getAsync = promisify(db.get.bind(db));
 db.allAsync = promisify(db.all.bind(db));
@@ -90,6 +91,28 @@ router.post('/', authenticateToken(), async (req, res) => {
     );
 
     const entryId = result.lastID;
+
+    // Generate embedding and AI analysis asynchronously (don't block response too long)
+    (async () => {
+      try {
+        const textToEmbed = `${title}\n\n${content || ''}`;
+        await generateEmbedding(entryId, textToEmbed);
+
+        // Run AI analysis to populate metadata (summary, tags, category)
+        try {
+          const aiMeta = await analyzeContent(textToEmbed);
+          const mergedMeta = Object.assign({}, metadata || {}, aiMeta);
+          await db.runAsync(
+            `UPDATE memory_entries SET metadata = ? WHERE id = ?`,
+            [JSON.stringify(mergedMeta), entryId]
+          );
+        } catch (aiErr) {
+          console.warn('AI analysis failed for entry', entryId, aiErr);
+        }
+      } catch (err) {
+        console.warn('Embedding generation failed for entry', entryId, err);
+      }
+    })();
 
     // Create timeline link if parent entry is specified
     if (parent_entry_id) {

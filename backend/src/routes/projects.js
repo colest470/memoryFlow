@@ -45,6 +45,12 @@ router.post('/', authenticateToken(), async (req, res) => {
       [result.lastID]
     );
 
+    await db.runAsync(
+      `INSERT INTO user_projects (user_id, project_id, role)
+       VALUES (?, ?, ?)`,
+      [req.user.id, project.id, 'owner']
+    );
+
     res.status(201).json({
       success: true,
       project: {
@@ -234,4 +240,103 @@ router.delete('/:id', authenticateToken(), async (req, res) => {
   }
 });
 
-export default router;
+/**
+ * ANALYZE PROJECT
+ * POST /api/projects/:id/analyze
+ * Runs embedding + AI analysis for all entries in the project and returns aggregated insights
+ */
+router.post('/:id/analyze', authenticateToken(), async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+
+    // Verify project exists and belongs to user's organization
+    const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [projectId]);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    // Get entries for project
+    const entries = await db.allAsync(
+      `SELECT id, title, content FROM memory_entries WHERE project_id = ?`,
+      [projectId]
+    );
+
+    const insights = [];
+    const suggestions = [];
+
+    for (const e of entries) {
+      const text = `${e.title}\n\n${e.content || ''}`;
+      try {
+        await generateEmbedding(e.id, text);
+      } catch (err) {
+        console.warn('Embedding failed for', e.id, err);
+      }
+
+      try {
+        const aiMeta = await analyzeContent(text);
+        await db.runAsync('UPDATE memory_entries SET metadata = ? WHERE id = ?', [JSON.stringify(aiMeta), e.id]);
+        insights.push({ entryId: e.id, ...aiMeta });
+      } catch (err) {
+        console.warn('AI analyze failed for', e.id, err);
+      }
+    }
+
+    // Suggest timeline links by similarity (basic): compare each pair and suggest if similarity > 0.7
+    for (let i = 0; i < entries.length; i++) {
+      const textA = `${entries[i].title}\n\n${entries[i].content || ''}`;
+      const vecA = await (async () => {
+        try { return await getEmbedding(entries[i].id); } catch { return null; }
+      })();
+      if (!vecA) continue;
+      for (let j = i + 1; j < entries.length; j++) {
+        const vecB = await (async () => {
+          try { return await getEmbedding(entries[j].id); } catch { return null; }
+        })();
+        if (!vecB) continue;
+        const score = require('../services/embeddings.js').cosineSimilarity(vecA, vecB);
+        if (score >= 0.7) {
+          suggestions.push({ from: entries[i].id, to: entries[j].id, similarity: score });
+        }
+      }
+    }
+
+    res.json({ success: true, insights, suggestions });
+  } catch (error) {
+    console.error('Project analyze error:', error);
+    res.status(500).json({ error: 'Failed to analyze project' });
+  }
+});
+
+router.get("/:id/members", async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    const members = await db.allAsync(
+      `SELECT p.id, p.full_name, p.email, up.role
+       FROM profiles p
+       JOIN user_projects up ON p.id = up.user_id
+       WHERE up.project_id = ?`,
+      [projectId]
+    );
+
+    res.json({ success: true, members });
+  } catch (error) {
+    console.error('Error fetching project members:', error);
+    res.status(500).json({ error: 'Failed to fetch project members' });
+  }
+});
+
+router.post("/:id/members", async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    const { user_id: userId, role } = req.body;
+
+    await db.runAsync(
+      `INSERT INTO user_projects (user_id, project_id, role)
+       VALUES (?, ?, ?)`,
+      [userId, projectId, role]
+    );
+
+    res.status(201).json({ success: true, message: 'Member added' });
+  } catch (error) {
+    console.error('Error adding project member:', error);
+    res.status(500).json({ error: 'Failed to add project member' });
+  }
+});

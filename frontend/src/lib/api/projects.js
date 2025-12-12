@@ -110,3 +110,79 @@ export async function deleteProject(id) {
     throw error;
   }
 }
+
+export async function analyzeProject(id) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${id}/analyze`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to analyze project');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error analyzing project:', error);
+    throw error;
+  }
+}
+
+export async function getProjectMembers(projectId) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/members`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch project members');
+    }
+    const data = await response.json();
+    return data.members || [];
+  } catch (error) {
+    console.error('Error fetching project members:', error);
+    throw error;
+  }
+}
+
+export async function addProjectMember(projectId, userId, role) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/members`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify({ user_id: userId, role }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to add project member');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding project member:', error);
+    throw error;
+  }
+}
+
+export async function removeProjectMember(projectId, userId) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/members`, {
+      method: 'DELETE',
+      headers: getAuthHeader(),
+      body: JSON.stringify({ user_id: userId }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to remove project member');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error removing project member:', error);
+    throw error;
+  }
+}

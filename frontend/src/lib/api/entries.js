@@ -228,5 +228,21 @@ export const entriesAPI = {
     }
 
     return response.json();
+  },
+
+  // Analyze a project: generate embeddings and AI metadata for all project entries
+  async analyzeProject(projectId) {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/analyze`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to analyze project');
+    }
+
+    return response.json();
   }
 };
