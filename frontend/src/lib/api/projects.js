@@ -150,6 +150,7 @@ export async function getProjectMembers(projectId) {
 
 export async function addProjectMember(projectId, userId, role) {
   try {
+    console.log('Adding member:', { projectId, userId, role });
     const response = await fetch(`${API_URL}/api/projects/${projectId}/members`, {
       method: 'POST',
       headers: getAuthHeader(),
@@ -183,6 +184,26 @@ export async function removeProjectMember(projectId, userId) {
     return await response.json();
   } catch (error) {
     console.error('Error removing project member:', error);
+    throw error;
+  }
+}
+
+export async function searchAddMember (query, projectId) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/searchAddMember`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify({ query }),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to search and add member');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching and adding member:', error);
     throw error;
   }
 }

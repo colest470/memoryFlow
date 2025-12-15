@@ -46,7 +46,7 @@ router.post('/', authenticateToken(), async (req, res) => {
     );
 
     await db.runAsync(
-      `INSERT INTO user_projects (user_id, project_id, role)
+      `INSERT INTO project_members (user_id, project_id, role)
        VALUES (?, ?, ?)`,
       [req.user.id, project.id, 'owner']
     );
@@ -305,13 +305,13 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
   }
 });
 
-router.get("/:id/members", async (req, res) => {
+router.get("/:id/members", authenticateToken(), async (req, res) => {
   try {
     const { id: projectId } = req.params;
     const members = await db.allAsync(
       `SELECT p.id, p.full_name, p.email, up.role
        FROM profiles p
-       JOIN user_projects up ON p.id = up.user_id
+       JOIN project_members up ON p.id = up.user_id
        WHERE up.project_id = ?`,
       [projectId]
     );
@@ -323,13 +323,13 @@ router.get("/:id/members", async (req, res) => {
   }
 });
 
-router.post("/:id/members", async (req, res) => {
+router.post("/:id/members", authenticateToken(), async (req, res) => {
   try {
     const { id: projectId } = req.params;
     const { user_id: userId, role } = req.body;
 
     await db.runAsync(
-      `INSERT INTO user_projects (user_id, project_id, role)
+      `INSERT INTO project_members (user_id, project_id, role)
        VALUES (?, ?, ?)`,
       [userId, projectId, role]
     );
@@ -340,3 +340,41 @@ router.post("/:id/members", async (req, res) => {
     res.status(500).json({ error: 'Failed to add project member' });
   }
 });
+
+router.post("/:id/searchAddMember", authenticateToken(), async (req, res) => {
+  try {
+    // const { id: projectId } = req.params;
+    const { query } = req.body;
+
+    const users = await db.allAsync(
+      `SELECT id, full_name, email
+       FROM profiles
+       WHERE full_name LIKE ? OR email LIKE ?`,
+      [`%${query}%`, `%${query}%`]
+    );
+
+    res.json({ success: true, users });
+  } catch (error) {
+    console.error('Error searching users to add:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+router.delete("/:id/members", authenticateToken(), async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    const { user_id: userId } = req.body;
+
+    await db.runAsync(
+      `DELETE FROM project_members WHERE user_id = ? AND project_id = ?`,
+      [userId, projectId]
+    );
+
+    res.json({ success: true, message: 'Member removed' });
+  } catch (error) {
+    console.error('Error removing project member:', error);
+    res.status(500).json({ error: 'Failed to remove project member' });
+  }
+});
+
+export default router;

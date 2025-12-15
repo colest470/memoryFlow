@@ -5,6 +5,7 @@ import SearchPage from './pages/SearchPage';
 import { AuthProvider } from './contexts/AuthContext';
 import SignUp from './components/auth/Signup';
 import Login from './components/auth/LogIn';
+import Logout from './components/auth/LogOut';
 import ProtectedRoute from './components/auth/ProtectedRoutes';
 import Home from './pages/Home';
 
@@ -16,6 +17,12 @@ function App() {
           <Route path="/" element={<Home />}/>
           <Route path='/login' element={<Login />}/>
           <Route path='/register' element={<SignUp />}/>
+
+          <Route path='/logout' element={
+            <ProtectedRoute>
+              <Logout />
+            </ProtectedRoute>
+          }/>
 
           <Route path='/dashboard' element={
             <ProtectedRoute>

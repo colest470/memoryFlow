@@ -140,8 +140,24 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const logout = () => {
+  const logout = async (user) => {
+    try {
+      const response = await apiRequest(`/api/auth/logout`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include"
+      });
 
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.errors?.[0]?.msg || 'Logout failed');
+      }
+
+      localStorage.removeItem("accessToken");
+      setUser(null);
+    } catch (error) {
+      console.error("Error logging out: ", error);
+    }
   }
 
   const value = {

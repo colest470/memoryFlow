@@ -211,28 +211,46 @@ export default function ProjectView() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-6">Memory Timeline</h2>
-              {entries?.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-600 mb-4">No entries yet</p>
-                  <button
-                    onClick={() => setShowEntryForm(true)}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Create your first entry
-                  </button>
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
+                  {activeTab === 'timeline' && (
+                    <>
+                      <h2 className="text-xl font-semibold text-slate-900 mb-6">Memory Timeline</h2>
+                      
+                      {entries?.length === 0 ? (
+                        <div className="text-center py-12">
+                          <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                          <p className="text-slate-600 mb-4">No entries yet</p>
+                          <button
+                            onClick={() => setShowEntryForm(true)}
+                            className="text-blue-600 hover:text-blue-700 font-medium transition duration-150 ease-in-out"
+                          >
+                            Create your first entry
+                          </button>
+                        </div>
+                      ) : (
+                        <TimelineView
+                          entries={entries}
+                          onSelectEntry={handleSelectEntry}
+                          onAddRelated={handleAddRelated}
+                        />
+                      )}
+                    </>
+                  )} 
+                  
+                  {activeTab === 'analytics' && (
+                    <>
+                      <h2 className="text-xl font-semibold text-slate-900 mb-6">Project Analytics</h2>
+                      <p className="text-slate-600">Analytics view is under construction.</p>
+                    </>
+                  )} 
+                  {(!['timeline', 'analytics'].includes(activeTab)) && (
+                    <>
+                      <h2 className="text-xl font-semibold text-slate-900 mb-6">Project Team</h2>
+                      <ProjectMembers projectId={projectId} />
+                    </>
+                  )}
                 </div>
-              ) : (
-                <TimelineView
-                  entries={entries}
-                  onSelectEntry={handleSelectEntry}
-                  onAddRelated={handleAddRelated}
-                />
-              )}
-            </div>
-          </div>
+              </div>
 
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 sticky top-32">

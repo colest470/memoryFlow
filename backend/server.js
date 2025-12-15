@@ -46,6 +46,14 @@ const authLimiter = rateLimit({
   }
 });
 
+app.use((req, res, next) => {
+  if (req.is('multipart/form-data')) {
+    next();
+  } else {
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
+
 app.use(cookieParser());
 
 app.use(express.json()); 

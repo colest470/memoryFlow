@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search as SearchIcon, BarChart3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjects, createProject } from '../lib/api/projects';
 import { entriesAPI } from '../lib/api/entries';
@@ -8,7 +9,7 @@ import ProjectCard from '../components/projects/ProjectCard';
 import ProjectForm from '../components/projects/ProjectForm';
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [stats, setStats] = useState({
@@ -19,6 +20,7 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState('projects');
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadDashboardData();
@@ -90,7 +92,8 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-600 capitalize">{user?.role}</p>
               </div>
               <button
-                onClick={signOut}
+                //onClick={signOut}
+                onClick={() =>navigate('/logout')}
                 className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Sign Out
