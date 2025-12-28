@@ -430,14 +430,14 @@ const ProjectMembers = ({ projectId }) => {
                             >
                                 <div className="flex items-center gap-3">
                                     <img
-                                        src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || member.email.split('@')[0])}&background=random`}
-                                        alt={member.name || member.email}
+                                        src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.full_name)}&background=random`}
+                                        alt={member.full_name || member.email}
                                         className="w-10 h-10 rounded-full"
                                     />
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-medium text-slate-900">
-                                                {member.name || member.email.split('@')[0]}
+                                                {member.full_name || member.name || member.email}
                                             </p>
                                             {(member.id === user.id || member.userId === user.id) && (
                                                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">

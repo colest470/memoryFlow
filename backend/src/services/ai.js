@@ -1,3 +1,16 @@
+import express from "express";
+import "dotenv/config"
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-2.5-flash", 
+  generationConfig: {
+    temperature: 0.3,
+    maxOutputTokens: 3024,
+  }
+});
+
 /**
  * AI Analysis Service
  * Provides mock AI analysis for entry content
@@ -108,6 +121,116 @@ function categorizeContent(text) {
   
   return bestCategory;
 }
+
+
+// Update your AnalyzeContent function or create a new one
+export const AnalyzeProject = async (entries) => {
+  try {
+    // Group all entries content for holistic analysis
+    const allContent = entries.map(entry => 
+      `Entry: "${entry.title}"\n${entry.content || ''}`
+    ).join('\n\n---\n\n');
+
+    const entriesCount = entries.length;
+    
+    const prompt = `Analyze this project consisting of ${entriesCount} entries and provide comprehensive insights.
+
+PROJECT CONTENT:
+${allContent}
+
+ANALYSIS INSTRUCTIONS:
+1. Identify overarching themes and patterns across all entries
+2. Extract key topics and their frequency
+3. Generate a project-level summary
+4. Identify potential gaps or missing information
+5. Suggest connections between different entries
+6. Provide actionable recommendations for the project
+
+RESPONSE FORMAT (JSON ONLY):
+{
+  "overall_summary": "Comprehensive summary of the entire project",
+  "key_themes": [
+    {
+      "theme": "theme name",
+      "frequency": 5,
+      "related_entries": [1, 3, 7],
+      "description": "theme description"
+    }
+  ],
+  "top_topics": ["topic1", "topic2", "topic3"],
+  "identified_gaps": [
+    {
+      "gap": "Missing information about X",
+      "recommendation": "Consider adding entry about Y",
+      "priority": "high|medium|low"
+    }
+  ],
+  "entry_connections": [
+    {
+      "entry1_id": 1,
+      "entry2_id": 3,
+      "connection_type": "contradiction|support|expansion",
+      "explanation": "How these entries relate"
+    }
+  ],
+  "actionable_recommendations": [
+    "Specific action 1",
+    "Specific action 2"
+  ],
+  "sentiment_analysis": "overall positive|negative|neutral with explanation",
+  "complexity_score": 0-10
+}`;
+
+    const model = genAi.getGenerativeModel({ model: "gemini-1.5-pro" }); 
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
+    
+    try {
+      return JSON.parse(response);
+    } catch (parseError) {
+      console.error('Failed to parse project analysis JSON:', parseError);
+      // Try to extract JSON if model added extra text
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      return null;
+    }
+  } catch (error) {
+    console.error('Error in AnalyzeProject:', error);
+    throw error;
+  }
+};
+
+export const CompareProjects = async (projectAEntries, projectBEntries) => {
+  try {
+    const prompt = `Compare these two projects and provide insights.
+
+PROJECT A ENTRIES: ${projectAEntries.length}
+${projectAEntries.map(e => `- ${e.title}: ${e.content?.slice(0, 100)}...`).join('\n')}
+
+PROJECT B ENTRIES: ${projectBEntries.length}
+${projectBEntries.map(e => `- ${e.title}: ${e.content?.slice(0, 100)}...`).join('\n')}
+
+RESPONSE FORMAT (JSON ONLY):
+{
+  "similarities": ["similarity1", "similarity2"],
+  "differences": ["difference1", "difference2"],
+  "shared_themes": ["theme1", "theme2"],
+  "unique_to_project_a": ["aspect1", "aspect2"],
+  "unique_to_project_b": ["aspect1", "aspect2"],
+  "collaboration_opportunities": ["opportunity1", "opportunity2"]
+}`;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const result = await model.generateContent(prompt);
+    return JSON.parse(result.response.text());
+  } catch (error) {
+    console.error('Error in CompareProjects:', error);
+    throw error;
+  }
+};
+
 
 export default {
   analyzeContent

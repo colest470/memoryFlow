@@ -27,35 +27,34 @@ router.post("/suggestions", authenticateToken(), async (req, res) => {
 
     // Prepare the prompt for Gemini
     const prompt = `Analyze this knowledge entry and provide suggestions in valid JSON format.
+      CONTEXT:
+      You are a knowledge management assistant. Analyze content and provide structured suggestions.
 
-CONTEXT:
-You are a knowledge management assistant. Analyze content and provide structured suggestions.
+      ENTRY DETAILS:
+      Title: ${title || 'No title'}
+      Entry Type: ${entry_type}
+      Content: ${content || 'No content provided'}
 
-ENTRY DETAILS:
-Title: ${title || 'No title'}
-Entry Type: ${entry_type}
-Content: ${content || 'No content provided'}
+      INSTRUCTIONS:
+      1. Provide 3-5 relevant tags/keywords
+      2. Create a concise 1-2 sentence summary
+      3. Categorize as: technical, business, process, team, or other
+      4. List 3-5 key points
+      5. Suggest any follow-up action items
+      6. Rate confidence as: high, medium, or low
 
-INSTRUCTIONS:
-1. Provide 3-5 relevant tags/keywords
-2. Create a concise 1-2 sentence summary
-3. Categorize as: technical, business, process, team, or other
-4. List 3-5 key points
-5. Suggest any follow-up action items
-6. Rate confidence as: high, medium, or low
+      RESPONSE FORMAT:
+      Return ONLY valid JSON with this exact structure:
+      {
+        "tags": ["tag1", "tag2", "tag3"],
+        "summary": "Brief summary here",
+        "category": "technical|business|process|team|other",
+        "key_points": ["Point 1", "Point 2", "Point 3"],
+        "action_items": ["Action 1", "Action 2"],
+        "confidence": "high|medium|low"
+      }
 
-RESPONSE FORMAT:
-Return ONLY valid JSON with this exact structure:
-{
-  "tags": ["tag1", "tag2", "tag3"],
-  "summary": "Brief summary here",
-  "category": "technical|business|process|team|other",
-  "key_points": ["Point 1", "Point 2", "Point 3"],
-  "action_items": ["Action 1", "Action 2"],
-  "confidence": "high|medium|low"
-}
-
-IMPORTANT: Do not include any additional text or markdown. Only the JSON object.`;
+      IMPORTANT: Do not include any additional text or markdown. Only the JSON object.`;
 
     try {
       const result = await model.generateContent(prompt);

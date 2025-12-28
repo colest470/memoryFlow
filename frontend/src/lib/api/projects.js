@@ -116,7 +116,8 @@ export async function analyzeProject(id) {
     const response = await fetch(`${API_URL}/api/projects/${id}/analyze`, {
       method: 'POST',
       headers: getAuthHeader(),
-      credentials: 'include'
+      credentials: 'include',
+      body: JSON.stringify({ analysisType: "comprehensive" })
     });
 
     if (!response.ok) {
