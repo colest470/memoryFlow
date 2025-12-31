@@ -183,6 +183,13 @@ export default function ProjectView() {
               Add Entry
             </button>
             <button
+              onClick={() => setActiveTab("timeline")}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors font-medium text-white"
+            >
+              <Plus className="w-4 h-4" />
+              Entries
+            </button>
+            <button
               onClick={handleAnalyzeProject}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={analyzeLoading}

@@ -114,7 +114,6 @@ router.post('/', authenticateToken(), async (req, res) => {
       }
     })();
 
-    // Create timeline link if parent entry is specified
     if (parent_entry_id) {
       try {
         await db.runAsync(
@@ -128,7 +127,7 @@ router.post('/', authenticateToken(), async (req, res) => {
       }
     }
 
-    // Fetch the created entry with author details
+    // Fetch the created entry with author details embedding
     const entry = await db.getAsync(
       `SELECT me.*, p.full_name as author_name, p.department as author_department
        FROM memory_entries me
@@ -669,7 +668,6 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
         author_department: entry.author_department,
         created_at: entry.created_at,
         project_title: entry.project_title,
-        // Relationship info
         isRoot: !childToParent.has(entry.id), // No parent = root entry
         isParent: parentToChildren.has(entry.id), // Has children = parent
         isChild: childToParent.has(entry.id), // Has parent = child
@@ -1133,22 +1131,6 @@ router.get('/insights/organization', authenticateToken(), async (req, res) => {
   } catch (error) {
     console.error('Organization insights error:', error);
     res.status(500).json({ error: 'Failed to fetch organization insights' });
-  }
-});
-
-router.get("/:id", authenticateToken(), async (req, res) => {
-  try {
-    const { memoryEntry } = req.query;
-
-    const entryLinks = await getAsync(`SELECT * FROM entry_links WHERE parent_entry_id = ? OR child_entry_id = ?`, [
-      memoryEntry,
-      memoryEntry
-    ]);
-
-    res.json({ entryLinks });
-  } catch(error) {
-    console.error('Entry links error:', error);
-    res.status(500).json({ error: 'Failed to fetch entry links' });
   }
 });
 
