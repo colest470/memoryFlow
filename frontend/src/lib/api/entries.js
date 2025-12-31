@@ -48,6 +48,9 @@ export const entriesAPI = {
       throw new Error('Failed to fetch entry');
     }
 
+    const data = await response.json();
+    console.log(data);
+
     return response.json();
   },
 

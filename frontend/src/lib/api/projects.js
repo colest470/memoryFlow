@@ -208,3 +208,23 @@ export async function searchAddMember (query, projectId) {
     throw error;
   }
 }
+
+export async function uploadfiles(projectId) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/uploadfiles`, {
+      method: "POST",
+      headers: getAuthHeader(),
+      credentials: "include",
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      throw new error("Failed to analyze the files", error)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error uploading files!")
+    throw error;
+  }
+}

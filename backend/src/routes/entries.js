@@ -623,51 +623,147 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
     );
 
     if (entries.length === 0) {
-      return res.json({ timeline: [] });
+      return res.json({ entries: [] });
     }
 
     // Get all links
     const links = await db.allAsync(
       `SELECT tl.* FROM entry_links tl
        JOIN memory_entries parent ON parent.id = tl.parent_entry_id
-       WHERE parent.project_id = ?`,
-      [projectId]
+       JOIN memory_entries child ON child.id = tl.child_entry_id
+       WHERE parent.project_id = ? AND child.project_id = ?`,
+      [projectId, projectId]
     );
 
-    // Build a map of entries
-    const entriesMap = new Map(
-      entries.map(e => [e.id, {
-        id: e.id,
-        title: e.title,
-        content: e.content,
-        entry_type: e.entry_type,
-        status: e.status,
-        author_name: e.author_name,
-        created_at: e.created_at,
-        children: [],
-        connections: []
-      }])
-    );
-
-    // Build connections
+    // Build maps for relationships
+    const parentToChildren = new Map();
+    const childToParent = new Map();
+    
+    // Populate relationship maps
     links.forEach(link => {
-      const parent = entriesMap.get(link.parent_entry_id);
-      const child = entriesMap.get(link.child_entry_id);
-      
-      if (parent && child) {
-        parent.children.push({
-          id: child.id,
-          title: child.title,
-          link_type: link.link_type
-        });
+      // Parent -> Children mapping
+      if (!parentToChildren.has(link.parent_entry_id)) {
+        parentToChildren.set(link.parent_entry_id, []);
       }
+      parentToChildren.get(link.parent_entry_id).push({
+        childId: link.child_entry_id,
+        linkType: link.link_type
+      });
+      
+      // Child -> Parent mapping
+      childToParent.set(link.child_entry_id, {
+        parentId: link.parent_entry_id,
+        linkType: link.link_type
+      });
     });
 
-    // Get root entries (no parents)
-    const parentIds = new Set(links.map(l => l.parent_entry_id));
-    const timeline = Array.from(entriesMap.values()).filter(e => !parentIds.has(e.id));
+    // Enhance entries with relationship info
+    const enhancedEntries = entries.map(entry => {
+      const enhanced = {
+        id: entry.id,
+        title: entry.title,
+        content: entry.content,
+        entry_type: entry.entry_type,
+        status: entry.status,
+        author_name: entry.author_name,
+        author_department: entry.author_department,
+        created_at: entry.created_at,
+        project_title: entry.project_title,
+        // Relationship info
+        isRoot: !childToParent.has(entry.id), // No parent = root entry
+        isParent: parentToChildren.has(entry.id), // Has children = parent
+        isChild: childToParent.has(entry.id), // Has parent = child
+        parentId: childToParent.has(entry.id) ? childToParent.get(entry.id).parentId : null,
+        parentLinkType: childToParent.has(entry.id) ? childToParent.get(entry.id).linkType : null,
+        children: parentToChildren.has(entry.id) 
+          ? parentToChildren.get(entry.id).map(link => ({
+              id: link.childId,
+              link_type: link.linkType
+            }))
+          : [],
+        childrenCount: parentToChildren.has(entry.id) ? parentToChildren.get(entry.id).length : 0
+      };
+      
+      return enhanced;
+    });
 
-    res.json({ timeline });
+    // Build hierarchical structure for the frontend
+    const buildHierarchicalEntries = () => {
+      const entryMap = new Map();
+      
+      // First pass: create basic entry objects
+      enhancedEntries.forEach(entry => {
+        entryMap.set(entry.id, {
+          ...entry,
+          children: [] // Will populate with actual child objects
+        });
+      });
+      
+      // Second pass: build parent-child relationships
+      enhancedEntries.forEach(entry => {
+        if (entry.parentId && entryMap.has(entry.parentId)) {
+          const parentEntry = entryMap.get(entry.parentId);
+          const childEntry = entryMap.get(entry.id);
+          
+          // Add child to parent's children array
+          parentEntry.children.push(childEntry);
+          
+          // Mark child as having a parent reference
+          childEntry.parent = {
+            id: parentEntry.id,
+            title: parentEntry.title,
+            link_type: entry.parentLinkType
+          };
+        }
+      });
+      
+      // Get root entries (entries without parents)
+      const rootEntries = Array.from(entryMap.values())
+        .filter(entry => !entry.parentId)
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      
+      return rootEntries;
+    };
+
+    // Alternative: Flat array with relationship info (for simpler frontend handling)
+    const flatEntriesWithRelationships = enhancedEntries.map(entry => {
+      const flatEntry = { ...entry };
+      
+      // Get parent title if exists
+      if (entry.parentId) {
+        const parentEntry = enhancedEntries.find(e => e.id === entry.parentId);
+        if (parentEntry) {
+          flatEntry.parent = {
+            id: parentEntry.id,
+            title: parentEntry.title,
+            link_type: entry.parentLinkType
+          };
+        }
+      }
+      
+      // Get child titles if exists
+      if (entry.children && entry.children.length > 0) {
+        flatEntry.children = entry.children.map(childLink => {
+          const childEntry = enhancedEntries.find(e => e.id === childLink.id);
+          return childEntry ? {
+            id: childEntry.id,
+            title: childEntry.title,
+            link_type: childLink.link_type
+          } : childLink;
+        });
+      }
+      
+      return flatEntry;
+    });
+
+    // Return both formats for flexibility
+    res.json({ 
+      entries: flatEntriesWithRelationships,
+      hierarchy: buildHierarchicalEntries(),
+      // For backwards compatibility
+      timeline: buildHierarchicalEntries()
+    });
+    
   } catch (error) {
     console.error('Timeline fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch timeline' });
@@ -1037,6 +1133,22 @@ router.get('/insights/organization', authenticateToken(), async (req, res) => {
   } catch (error) {
     console.error('Organization insights error:', error);
     res.status(500).json({ error: 'Failed to fetch organization insights' });
+  }
+});
+
+router.get("/:id", authenticateToken(), async (req, res) => {
+  try {
+    const { memoryEntry } = req.query;
+
+    const entryLinks = await getAsync(`SELECT * FROM entry_links WHERE parent_entry_id = ? OR child_entry_id = ?`, [
+      memoryEntry,
+      memoryEntry
+    ]);
+
+    res.json({ entryLinks });
+  } catch(error) {
+    console.error('Entry links error:', error);
+    res.status(500).json({ error: 'Failed to fetch entry links' });
   }
 });
 

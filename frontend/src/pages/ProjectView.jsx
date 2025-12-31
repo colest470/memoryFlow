@@ -31,13 +31,17 @@ export default function ProjectView() {
         getProject(projectId),
         entriesAPI.getProjectTimeline(projectId),
       ]);
+
+      console.log("TimelineData: ", timelineData);
+
       setProject(projectData);
-      if (Array.isArray(timelineData)) {
-        setEntries(timelineData.timeline);
-      } else {
-        console.warn('API returned non-array for entries. Defaulting to empty array.', timelineData);
-        setEntries(timelineData.timeline || []);
-      }
+      setEntries(timelineData.entries);
+      // if (Array.isArray(timelineData)) {
+      //   setEntries(timelineData.entries);
+      // } else {
+      //   console.warn('API returned non-array for entries. Defaulting to empty array.', timelineData);
+      //   setEntries(timelineData.entries || []);
+      // }
       
     } catch (error) {
       console.error('Error loading project:', error);

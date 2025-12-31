@@ -105,7 +105,8 @@ const initDatabase = async () => {
                 tags TEXT, -- Store as comma-separated or JSON
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                metadata TEXT DEFAULT '{}'
+                metadata TEXT DEFAULT '{}',
+                genAISummary TEXT DEFAULT '' -- (data entered, what is it, any changes made from parent(if related entry), differences from other projects, what the files uploaded contain(in detail), summary) 
             )
         `);
 

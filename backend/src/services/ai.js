@@ -3,7 +3,7 @@ import "dotenv/config"
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ 
+const model = genAi.getGenerativeModel({ 
   model: "gemini-2.5-flash", 
   generationConfig: {
     temperature: 0.3,
