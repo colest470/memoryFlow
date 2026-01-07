@@ -2,16 +2,45 @@ import express from "express";
 import "dotenv/config";
 import { authenticateToken } from "../../middleware/tokens.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import multer from "multer";
 
 const router = express.Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  files: 10,
+  fileSize: 10 * 1024 * 1024,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/jpeg',
+      'image/png',
+      'image/gif'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'), false);
+    }
+  }
+});
 
 // Initialize Google Gemini with corrected model and higher token limit
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-2.5-flash", // Updated from gemini-pro for better stability
+  model: "gemini-2.5-flash",
   generationConfig: {
     temperature: 0.3,
-    maxOutputTokens: 1024, // Increased to prevent 'Unexpected end of JSON input'
+    maxOutputTokens: 1024,
   }
 });
 
@@ -185,5 +214,125 @@ router.get("/health", async (req, res) => {
     });
   }
 });
+
+router.post("/analyze-files",
+  authenticateToken(),
+  upload.array("files", 10), 
+  async (req, res) => {
+  try {
+    const fileArr = req.files;
+    console.log("Received files: ", fileArr);
+
+    if (!fileArr || fileArr.length === 0) {
+      return res.status(404).json({ error: "No files attached!" });
+    }
+
+    const analysisResults = {};
+    const insights = [];
+
+    for (const file of fileArr) {
+      // CORRECTED: Use originalname (lowercase), not originalName
+      const { originalname, mimetype, buffer, size } = file;
+      console.log(`Processing file: ${originalname}, type: ${mimetype}, size: ${size}`);
+
+      try {
+        const base64Data = buffer.toString("base64");
+
+        // CORRECTED: Pass parameters correctly
+        const aiResponse = await processFileAI(originalname, mimetype, base64Data, size);
+
+        analysisResults[originalname] = {
+          type: mimetype,
+          size: size,
+          analysis: aiResponse.analysis,
+          summary: aiResponse.summary
+        };
+
+        if (aiResponse.insights) {
+          insights.push(...aiResponse.insights);
+        }
+      } catch (fileError) {
+        console.error(`Error processing file ${originalname}:`, fileError);
+        analysisResults[originalname] = {
+          type: mimetype,
+          size: size,
+          error: 'Failed to analyze file',
+          analysis: null
+        };
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      analysis: analysisResults,
+      insights: insights,
+      message: `Analyzed ${fileArr.length} file(s)`
+    });
+
+  } catch (error) {
+    console.error(`Error in analyze-files route:`, error);
+    return res.status(500).json({ 
+      error: 'Failed to analyze files',
+      details: error.message 
+    });
+  }
+});
+
+// CORRECTED: Function should accept parameters individually, not as an object
+async function processFileAI(name, type, data, size) {
+  try {
+    const prompt = `Analyze this file named "${name}" which is a ${type} file with size ${size} bytes. The file content is provided in base64 format. Please analyze the content and provide:
+    1. A brief summary of what this file is about
+    2. Key insights or important information found in the file
+    3. File type-specific analysis (e.g., if it's a PDF, mention pages, if it's an image, describe what you can see)
+    
+    Base64 data: ${data.substring(0, 1000)}... [truncated]`;
+
+    console.log("Sending to AI model...");
+    
+    // Assuming you have a model configured
+    const aiResponse = await model.generateContent(prompt);
+    const responseText = aiResponse.response.text();
+    
+    console.log("AI response: ", responseText);
+
+    // Parse the AI response to extract structured data
+    return {
+      analysis: {
+        fileType: type,
+        fileName: name,
+        fileSize: size,
+        contentSummary: responseText
+      },
+      summary: responseText.substring(0, 200) + "...", // First 200 chars as summary
+      insights: [
+        `File: ${name}`,
+        `Type: ${type}`,
+        `Size: ${size} bytes`,
+        `Analysis completed successfully`
+      ]
+    };
+
+  } catch (error) {
+    console.error(`Error in AI processing for file ${name}:`, error);
+    
+    // Return fallback analysis
+    return {
+      analysis: {
+        fileType: type,
+        fileName: name,
+        fileSize: size,
+        error: error.message
+      },
+      summary: `Basic analysis of ${name} (${type})`,
+      insights: [
+        `File: ${name}`,
+        `Type: ${type}`,
+        `Size: ${size} bytes`,
+        `Note: AI analysis failed, using basic metadata`
+      ]
+    };
+  }
+}
 
 export default router;

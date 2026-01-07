@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Sparkles, Check, AlertCircle, Upload, FileText, Image, File, Trash2, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose }) {
@@ -10,6 +10,10 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [tagInput, setTagInput] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -19,13 +23,14 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     status: 'active',
     department: '',
     metadata: {
-      ai_suggestions: null
+      ai_suggestions: null,
+      attached_files: []
     },
     parent_entry_id: parentEntryId || null,
     link_type: 'followed_from'
   });
 
-  // Entry type descriptions for help text
+  // Entry type descriptions for help text sentences
   const entryTypeDescriptions = {
     report: 'Formal report with findings and analysis',
     meeting_note: 'Notes and decisions from a meeting',
@@ -46,38 +51,344 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }
   }, [user]);
 
-  // Handle tag addition
-  const handleAddTag = () => {
-    const tag = tagInput.trim();
-    if (tag && !formData.tags.includes(tag)) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tag],
-      }));
-      setTagInput('');
+  // Handle drag events
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // Handle file drop
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    await handleFiles(files);
+  };
+
+  // Handle file input change
+  const handleFileInput = async (e) => {
+    const files = Array.from(e.target.files);
+    await handleFiles(files);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  // Handle tag removal
-  const handleRemoveTag = (tag) => {
+  // Add tag handler
+  const handleAddTag = () => {
+    if (!tagInput.trim()) return;
+    
+    const tag = tagInput.trim().toLowerCase();
+    
+    // Check if tag already exists
+    if (!formData.tags.includes(tag)) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag]
+      }));
+    }
+    
+    setTagInput('');
+  };
+
+  // Remove tag handler
+  const handleRemoveTag = (tagToRemove) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.filter(t => t !== tag),
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
     }));
+  };
+
+  const handleFiles = async (files) => {
+    if (files.length === 0) return;
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/jpeg',
+      'image/png',
+      'image/gif'
+    ];
+
+    const nonAllowedTypes = [
+      'mp4',
+      'avi',
+      'mov',
+      'wmv',
+      'flv',
+      'mkv',
+      'webm',
+      'mp3',
+      'wav',
+      'ogg',
+      'zip',
+      'rar',
+      '7z',
+      'tar',
+      'gz'
+    ];
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    const validFiles = files.filter(file => {
+      // Check file extension against non-allowed types
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const isNonAllowed = nonAllowedTypes.some(nonAllowedType => 
+        fileExtension === nonAllowedType ||
+        file.type.includes(`/${nonAllowedType}`) || 
+        file.name.toLowerCase().endsWith(`.${nonAllowedType}`)
+      );
+
+      if (isNonAllowed) {
+        setError(`File type not allowed: ${file.name}. Please upload PDF, DOC, TXT, or image files.`);
+        return false;
+      }
+
+      if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/')) {
+        const isImage = file.type.startsWith('image/');
+        const isDocument = file.type.includes('document') || file.type.includes('text');
+        
+        if (!isImage && !isDocument) {
+          setError(`File type not supported: ${file.name}. Please upload PDF, DOC, TXT, or image files.`);
+          return false;
+        }
+      }
+
+      if (file.size > maxSize) {
+        setError(`File too large: ${file.name}. Maximum size is 10MB.`);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    if (validFiles.length > 0) {
+      setError('');
+    }
+
+    const newFiles = validFiles.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      status: 'pending',
+      progress: 0
+    }));
+
+
+
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    
+    if (useAI) {
+      setTimeout(() => {
+        analyzeFiles(newFiles);
+      }, 500);
+    }
+  };
+
+  const handleRemoveFile = (fileId) => {
+    const fileToRemove = uploadedFiles.find(f => f.id === fileId);
+    if (fileToRemove?.preview) {
+      URL.revokeObjectURL(fileToRemove.preview);
+    }
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+    
+    setFormData(prev => ({
+      ...prev,
+      metadata: {
+        ...prev.metadata,
+        attached_files: prev.metadata.attached_files.filter(f => f.id !== fileId)
+      }
+    }));
+  };
+
+  const getFileIcon = (fileType, fileName) => {
+    if (fileType.startsWith('image/')) return <Image className="w-5 h-5" />;
+    if (fileType.includes('pdf')) return <FileText className="w-5 h-5" />;
+    if (fileType.includes('word') || fileType.includes('document')) return <FileText className="w-5 h-5" />;
+    if (fileType.includes('excel') || fileType.includes('spreadsheet')) return <FileText className="w-5 h-5" />;
+    if (fileType.includes('powerpoint') || fileType.includes('presentation')) return <FileText className="w-5 h-5" />;
+    if (fileType.includes('text/')) return <FileText className="w-5 h-5" />;
+    return <File className="w-5 h-5" />;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const analyzeFiles = async (filesToAnalyze = uploadedFiles) => {
+    if (filesToAnalyze.length === 0) return;
+    
+    setUploadingFiles(true);
+    setError('');
+    
+    try {
+      // Update file statuses to uploading
+      setUploadedFiles(prev => prev.map(file => 
+        filesToAnalyze.find(f => f.id === file.id) 
+          ? { ...file, status: 'uploading', progress: 0 }
+          : file
+      ));
+
+      const formDataToSend = new FormData();
+      filesToAnalyze.forEach(file => {
+        formDataToSend.append('files', file.file);
+      });
+
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadedFiles(prev => prev.map(file => {
+          if (filesToAnalyze.find(f => f.id === file.id) && file.progress < 90) {
+            return { ...file, progress: file.progress + 10 };
+          }
+          return file;
+        }));
+      }, 300);
+
+      // Send to backend for analysis
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BACKEND}/api/ai/analyze-files`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: formDataToSend
+        }
+      );
+
+      clearInterval(progressInterval);
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze files');
+      }
+
+      const data = await response.json();
+
+      // Update file statuses to completed
+      setUploadedFiles(prev => prev.map(file => 
+        filesToAnalyze.find(f => f.id === file.id) 
+          ? { ...file, status: 'completed', progress: 100 }
+          : file
+      ));
+
+      // Update formData with file metadata
+      setFormData(prev => ({
+        ...prev,
+        metadata: {
+          ...prev.metadata,
+          attached_files: [
+            ...prev.metadata.attached_files,
+            ...filesToAnalyze.map(file => ({
+              id: file.id,
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              analysis: data.analysis?.[file.name] || null
+            }))
+          ]
+        }
+      }));
+
+      // Extract insights from file analysis and update content
+      if (data.insights && data.insights.length > 0) {
+        const insightsText = data.insights.join('\n• ');
+        setFormData(prev => ({
+          ...prev,
+          content: prev.content + (prev.content ? '\n\n' : '') + `📎 File Analysis Insights:\n• ${insightsText}`
+        }));
+        setSuccessMessage('Files analyzed and insights added to content');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+
+    } catch (err) {
+      console.error('File analysis error:', err);
+      
+      // Update file statuses to error
+      setUploadedFiles(prev => prev.map(file => 
+        filesToAnalyze.find(f => f.id === file.id) 
+          ? { ...file, status: 'error', progress: 0 }
+          : file
+      ));
+      
+      // Fallback to file metadata extraction
+      const fallbackInsights = filesToAnalyze.map(file => {
+        const insights = [`File: ${file.name} (${formatFileSize(file.size)})`];
+        if (file.type.includes('image/')) {
+          insights.push('Image file detected');
+        } else if (file.type.includes('pdf')) {
+          insights.push('PDF document ');
+        } else if (file.type.includes('text/')) {
+          insights.push('Text file');
+        }
+        return insights.join(' - ');
+      });
+
+      if (fallbackInsights.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          content: prev.content + (prev.content ? '\n\n' : '') + `📎 Files attached (${filesToAnalyze.length}):\n• ${fallbackInsights.join('\n• ')}`
+        }));
+        setSuccessMessage('Files attached with basic metadata');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+      
+    } finally {
+      setUploadingFiles(false);
+    }
+  };
+
+  // Manual trigger for file analysis
+  const handleAnalyzeFiles = async () => {
+    const pendingFiles = uploadedFiles.filter(f => f.status === 'pending');
+    if (pendingFiles.length > 0) {
+      await analyzeFiles(pendingFiles);
+    }
   };
 
   // Enhanced AI suggestions with fallback
   const handleAISuggestions = async () => {
-    if (!formData.content.trim() && !formData.title.trim()) {
-      setError('Please enter content or title for AI suggestions');
-      return;
-    }
-
     setGeneratingAI(true);
     setError('');
     
     try {
-      // Try to call real AI backend first
+      const hasContent = formData.content.trim().length > 0 || 
+                         formData.title.trim().length > 0 || 
+                         uploadedFiles.length > 0;
+      
+      if (!hasContent) {
+        throw new Error('Please add some content, title, or files to generate AI suggestions');
+      }
+      
       const response = await fetch(
         `${import.meta.env.VITE_API_BACKEND}/api/ai/suggestions`,
         {
@@ -89,119 +400,124 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           body: JSON.stringify({
             title: formData.title,
             content: formData.content,
-            entry_type: formData.entry_type
+            entry_type: formData.entry_type,
+            files: uploadedFiles.map(f => ({
+              name: f.name,
+              type: f.type,
+              size: f.size
+            }))
           })
         }
       );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        console.log(data);
-        
-        // Update form with AI suggestions
-        setFormData(prev => ({
-          ...prev,
-          metadata: {
-            ...prev.metadata,
-            ai_suggestions: {
-              ...data.suggestions,
-              generated_at: new Date().toISOString(),
-              ai_model: 'gpt-3.5-turbo'
-            }
-          }
-        }));
-
-        // Auto-add top 2 AI tags
-        if (data.suggestions?.tags?.length > 0) {
-          const newTags = data.suggestions.tags
-            .slice(0, 2)
-            .filter(tag => !formData.tags.includes(tag));
-          
-          if (newTags.length > 0) {
-            setFormData(prev => ({
-              ...prev,
-              tags: [...prev.tags, ...newTags]
-            }));
-            setSuccessMessage(`Added ${newTags.length} AI-suggested tags`);
-            setTimeout(() => setSuccessMessage(''), 3000);
-          }
-        }
-
-      } else {
-        // Fallback to smart mock suggestions if AI service fails
-        throw new Error('AI service unavailable');
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate AI suggestions');
       }
-
-    } catch (err) {
-      console.log('Using fallback AI suggestions:', err.message);
       
-      // Smart fallback suggestions
-      const contentWords = formData.content.toLowerCase().split(/\s+/);
-      const uniqueWords = [...new Set(contentWords)]
-        .filter(w => w.length > 4)
-        .slice(0, 5);
-
-      const commonTags = {
-        report: ['analysis', 'findings', 'data', 'conclusion'],
-        meeting_note: ['discussion', 'decision', 'action', 'minutes'],
-        insight: ['learning', 'discovery', 'realization', 'pattern'],
-        decision: ['resolution', 'approval', 'direction', 'choice'],
-        experiment: ['test', 'trial', 'validation', 'method'],
-        outcome: ['result', 'achievement', 'impact', 'deliverable'],
-        proposal: ['suggestion', 'recommendation', 'plan', 'initiative'],
-        result: ['output', 'conclusion', 'finding', 'delivery']
-      };
-
-      const baseTags = commonTags[formData.entry_type] || ['important', 'documented'];
+      const data = await response.json();
       
-      const smartSuggestions = {
-        tags: [...baseTags, ...uniqueWords].filter((v, i, a) => a.indexOf(v) === i),
-        summary: generateSmartSummary(formData.content, formData.title),
-        category: formData.entry_type,
-        key_points: extractKeyPoints(formData.content),
-        confidence: formData.content.length > 100 ? 'high' : 
-                   formData.content.length > 50 ? 'medium' : 'low',
-        generated_at: new Date().toISOString(),
-        ai_model: 'fallback'
-      };
-
       setFormData(prev => ({
         ...prev,
         metadata: {
           ...prev.metadata,
-          ai_suggestions: smartSuggestions
+          ai_suggestions: {
+            ...data,
+            generated_at: new Date().toISOString()
+          }
         }
       }));
-
+      
+      setSuccessMessage('AI suggestions generated successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
+    } catch (err) {
+      console.error('AI suggestions error:', err);
+      
+      // Fallback suggestions based on content
+      const fallbackSuggestions = {
+        tags: generateFallbackTags(formData.content, formData.title, formData.entry_type),
+        summary: generateFallbackSummary(formData.content, formData.title),
+        key_points: extractKeyPoints(formData.content),
+        confidence: 'medium',
+        generated_at: new Date().toISOString()
+      };
+      
+      setFormData(prev => ({
+        ...prev,
+        metadata: {
+          ...prev.metadata,
+          ai_suggestions: fallbackSuggestions
+        }
+      }));
+      
+      setSuccessMessage('Generated basic suggestions (AI service unavailable)');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
     } finally {
       setGeneratingAI(false);
     }
   };
 
-  // Helper functions for fallback AI
-  const generateSmartSummary = (content, title) => {
-    if (!content && !title) return '';
+  // Helper function to generate fallback tags
+  const generateFallbackTags = (content, title, entryType) => {
+    const tags = new Set();
     
-    if (content) {
-      const sentences = content.split(/[.!?]+/).filter(s => s.trim());
-      if (sentences.length > 0) {
-        return sentences[0].trim() + (sentences.length > 1 ? '...' : '');
-      }
-      return content.substring(0, 120) + (content.length > 120 ? '...' : '');
+    // Add entry type as tag
+    if (entryType) {
+      tags.add(entryType.replace('_', '-'));
     }
     
-    return title;
+    // Extract words from title and content
+    const text = `${title} ${content}`.toLowerCase();
+    const words = text.split(/\s+/).filter(word => word.length > 3);
+    
+    // Common keywords to look for
+    const commonKeywords = [
+      'analysis', 'report', 'meeting', 'decision', 'experiment',
+      'result', 'proposal', 'insight', 'data', 'research',
+      'development', 'design', 'testing', 'review', 'update'
+    ];
+    
+    commonKeywords.forEach(keyword => {
+      if (text.includes(keyword)) {
+        tags.add(keyword);
+      }
+    });
+    
+    // Add a few random high-frequency words
+    const wordFrequency = {};
+    words.forEach(word => {
+      wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+    });
+    
+    const sortedWords = Object.entries(wordFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([word]) => word);
+    
+    sortedWords.forEach(word => tags.add(word));
+    
+    return Array.from(tags).slice(0, 5);
   };
 
+  // Helper function to generate fallback summary
+  const generateFallbackSummary = (content, title) => {
+    if (content.length > 0) {
+      // Take first 150 characters of content as summary
+      return content.length > 150 
+        ? content.substring(0, 150) + '...'
+        : content;
+    }
+    return `Entry about "${title}" - add more details for better summary.`;
+  };
+
+  // Helper function to extract key points
   const extractKeyPoints = (content) => {
-    if (!content) return [];
+    if (!content.trim()) return [];
     
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim());
-    return sentences
-      .filter(s => s.length > 20)
-      .slice(0, 3)
-      .map(s => s.trim());
+    // Split content into sentences and take first 3-5
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    return sentences.slice(0, 3).map(s => s.trim());
   };
 
   // Apply all AI suggestions
@@ -209,29 +525,36 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     if (!formData.metadata.ai_suggestions) return;
     
     const suggestions = formData.metadata.ai_suggestions;
-    let updates = {};
     
     // Apply tags
-    if (suggestions.tags?.length > 0) {
-      const newTags = suggestions.tags.filter(tag => !formData.tags.includes(tag));
-      if (newTags.length > 0) {
-        updates.tags = [...formData.tags, ...newTags];
+    const newTags = [...new Set([...formData.tags, ...(suggestions.tags || [])])];
+    
+    // Apply summary to content if not already there
+    let newContent = formData.content;
+    if (suggestions.summary && !formData.content.includes(suggestions.summary.substring(0, 50))) {
+      newContent = formData.content + (formData.content ? '\n\n' : '') + 
+                   `AI Summary: ${suggestions.summary}`;
+    }
+    
+    // Add key points if not already there
+    if (suggestions.key_points && suggestions.key_points.length > 0) {
+      const keyPointsText = suggestions.key_points.join('\n• ');
+      if (!formData.content.includes(keyPointsText.substring(0, 50))) {
+        newContent += (newContent ? '\n\n' : '') + `Key Points:\n• ${keyPointsText}`;
       }
     }
     
-    // Apply summary as content if content is empty
-    if (!formData.content.trim() && suggestions.summary) {
-      updates.content = suggestions.summary;
-    }
+    setFormData(prev => ({
+      ...prev,
+      tags: newTags,
+      content: newContent
+    }));
     
-    if (Object.keys(updates).length > 0) {
-      setFormData(prev => ({ ...prev, ...updates }));
-      setSuccessMessage('Applied AI suggestions');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    }
+    setSuccessMessage('All AI suggestions applied!');
+    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  // Form submission
+  // Form submission with added file handling
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -250,6 +573,14 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         throw new Error('Invalid entry type');
       }
 
+      // Prepare file data for submission
+      const fileData = uploadedFiles.map(file => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        analysis: formData.metadata.attached_files.find(f => f.id === file.id)?.analysis || null
+      }));
+
       const payload = {
         title: formData.title,
         content: formData.content,
@@ -258,12 +589,15 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         status: formData.status,
         department: formData.department,
         tags: formData.tags,
-        metadata: useAI ? formData.metadata : {},
+        metadata: {
+          ...(useAI ? formData.metadata : {}),
+          attached_files: fileData
+        },
         parent_entry_id: formData.parent_entry_id,
         link_type: formData.link_type
       };
 
-      console.log('Creating entry:', payload);
+      console.log('Creating entry with files:', payload);
 
       const response = await fetch(
         `${import.meta.env.VITE_API_BACKEND}/api/entries`,
@@ -293,6 +627,13 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       if (onSubmit) {
         await onSubmit(responseData.entry);
       }
+      
+      // Clean up file preview URLs
+      uploadedFiles.forEach(file => {
+        if (file.preview) {
+          URL.revokeObjectURL(file.preview);
+        }
+      });
       
       // Close modal after short delay
       setTimeout(() => {
@@ -377,6 +718,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       aria-checked={useAI}
                       onClick={() => setUseAI(!useAI)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${useAI ? 'bg-blue-600' : 'bg-slate-300'}`}
+                      disabled={uploadingFiles}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useAI ? 'translate-x-6' : 'translate-x-1'}`}
@@ -385,7 +727,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                   </div>
                   
                   <p className="text-sm text-slate-600 mb-3">
-                    Get smart tag suggestions, summaries, and insights powered by AI.
+                    Get smart tag suggestions, analyze files, and generate insights powered by AI.
                   </p>
                   
                   {/* Status indicator */}
@@ -407,6 +749,148 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           </div>
 
+          {/* File Upload Section */}
+          {useAI && ( 
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">
+                  Attach Files for AI Analysis
+                </label>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                  disabled={uploadingFiles}
+                >
+                  <Upload className="w-4 h-4" />
+                  Browse Files
+                </button>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileInput}
+                multiple
+                accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif"
+                className="hidden"
+                disabled={uploadingFiles || loading}
+              />
+
+              {/* Drag & Drop Area */}
+              <div
+                className={`border-2 border-dashed rounded-xl transition-all ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:border-slate-400'} ${uploadingFiles ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => !uploadingFiles && fileInputRef.current?.click()}
+              >
+                <div className="p-8 text-center">
+                  <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-blue-500' : 'text-slate-400'}`} />
+                  <p className="text-slate-700 font-medium mb-2">
+                    {isDragging ? 'Drop files here' : 'Drag & drop files here'}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    or click to browse. Supports PDF, DOC, TXT, Images (max 10MB each)
+                  </p>
+                </div>
+              </div>
+
+              {/* Uploaded Files List */}
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700">
+                      Files ({uploadedFiles.length})
+                    </span>
+                    {useAI && uploadedFiles.some(f => f.status === 'pending') && (
+                      <button
+                        type="button"
+                        onClick={handleAnalyzeFiles}
+                        disabled={uploadingFiles}
+                        className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      >
+                        {uploadingFiles ? (
+                          <>
+                            <Loader className="w-3 h-3 animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3" />
+                            Analyze with AI
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {uploadedFiles.map(file => (
+                      <div
+                        key={file.id}
+                        className={`flex items-center gap-4 p-3 rounded-lg border ${file.status === 'error' ? 'border-red-200 bg-red-50' : file.status === 'completed' ? 'border-green-200 bg-green-50' : 'border-slate-200'}`}
+                      >
+                        {/* File Icon */}
+                        <div className={`p-2 rounded-lg ${file.status === 'error' ? 'bg-red-100 text-red-600' : file.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
+                          {getFileIcon(file.type, file.name)}
+                        </div>
+
+                        {/* File Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-medium text-slate-900 text-sm truncate">
+                              {file.name}
+                            </p>
+                            <span className="text-xs text-slate-500">
+                              {formatFileSize(file.size)}
+                            </span>
+                          </div>
+
+                          {/* Progress Bar */}
+                          {(file.status === 'uploading' || file.status === 'analyzing') && (
+                            <div className="w-full bg-slate-200 rounded-full h-1.5">
+                              <div
+                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${file.progress}%` }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Status */}
+                          <div className="flex items-center justify-between mt-1">
+                            <span className={`text-xs font-medium ${file.status === 'error' ? 'text-red-600' : file.status === 'completed' ? 'text-green-600' : 'text-blue-600'}`}>
+                              {file.status === 'pending' && 'Ready to analyze'}
+                              {file.status === 'uploading' && 'Uploading...'}
+                              {file.status === 'analyzing' && 'Analyzing...'}
+                              {file.status === 'completed' && 'Analysis complete'}
+                              {file.status === 'error' && 'Analysis failed'}
+                            </span>
+                            {file.status === 'uploading' || file.status === 'analyzing' ? (
+                              <span className="text-xs text-slate-500">{file.progress}%</span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Remove Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(file.id)}
+                          disabled={uploadingFiles}
+                          className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Title Field */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-2">
@@ -420,7 +904,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               placeholder="What is this knowledge about?"
               required
-              disabled={loading}
+              disabled={loading || uploadingFiles}
             />
           </div>
 
@@ -439,7 +923,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               value={formData.entry_type}
               onChange={(e) => setFormData(prev => ({ ...prev, entry_type: e.target.value }))}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
-              disabled={loading}
+              disabled={loading || uploadingFiles}
             >
               <option value="report">📊 Report</option>
               <option value="meeting_note">📝 Meeting Note</option>
@@ -457,7 +941,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             <label htmlFor="content" className="block text-sm font-medium text-slate-700 mb-2">
               Content
               <span className="text-slate-400 text-sm font-normal ml-1">
-                (What did you learn or discover?)
+                (What is the content about?)
               </span>
             </label>
             <textarea
@@ -466,17 +950,17 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors min-h-[200px] resize-y"
               placeholder="Describe the details, findings, insights, or results..."
-              disabled={loading}
+              disabled={loading || uploadingFiles}
             />
             
             {/* AI Suggestions Button */}
-            {useAI && !generatingAI && (formData.content.trim() || formData.title.trim()) && (
+            {useAI && !generatingAI && (formData.content.trim() || formData.title.trim() || uploadedFiles.length > 0) && (
               <div className="mt-3 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={handleAISuggestions}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium text-sm"
-                  disabled={loading}
+                  disabled={loading || uploadingFiles}
                 >
                   <Sparkles className="w-4 h-4" />
                   Get AI Suggestions
@@ -626,13 +1110,13 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                 className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Add tags like 'api', 'integration', 'bug-fix'..."
-                disabled={loading}
+                disabled={loading || uploadingFiles}
               />
               <button
                 type="button"
                 onClick={handleAddTag}
                 className="px-5 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
-                disabled={loading}
+                disabled={loading || uploadingFiles}
               >
                 Add
               </button>
@@ -651,7 +1135,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
                       className="text-blue-600 hover:text-blue-900 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
-                      disabled={loading}
+                      disabled={loading || uploadingFiles}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -672,7 +1156,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 value={formData.link_type}
                 onChange={(e) => setFormData(prev => ({ ...prev, link_type: e.target.value }))}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                disabled={loading}
+                disabled={loading || uploadingFiles}
               >
                 <option value="followed_from">📖 Followed from (continuation)</option>
                 <option value="revised_by">✏️ Revised by (update or correction)</option>
@@ -686,13 +1170,18 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           <div className="flex gap-3 pt-6 border-t border-slate-200">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploadingFiles}
               className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   Creating Entry...
+                </span>
+              ) : uploadingFiles ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Analyzing Files...
                 </span>
               ) : (
                 'Create Knowledge Entry'
@@ -701,7 +1190,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
+              disabled={loading || uploadingFiles}
               className="px-8 py-3.5 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               Cancel

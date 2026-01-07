@@ -233,7 +233,6 @@ export const entriesAPI = {
     return response.json();
   },
 
-  // Analyze a project: generate embeddings and AI metadata for all project entries
   async analyzeProject(projectId) {
     const response = await fetch(`${API_URL}/api/projects/${projectId}/analyze`, {
       method: 'POST',
@@ -247,5 +246,23 @@ export const entriesAPI = {
     }
 
     return response.json();
-  }
+  },
+
+  async analyzeFiles(files) {
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/files`, {
+        method: "POST",
+        credentials: "include",
+        headers: getAuthHeader(),
+        body: files,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to analyze project');
+      }
+    } catch (error) {
+      
+    }
+  },
 };

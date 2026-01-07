@@ -126,7 +126,6 @@ function categorizeContent(text) {
 // Update your AnalyzeContent function or create a new one
 export const AnalyzeProject = async (entries) => {
   try {
-    // Group all entries content for holistic analysis
     const allContent = entries.map(entry => 
       `Entry: "${entry.title}"\n${entry.content || ''}`
     ).join('\n\n---\n\n');
@@ -145,6 +144,7 @@ ANALYSIS INSTRUCTIONS:
 4. Identify potential gaps or missing information
 5. Suggest connections between different entries
 6. Provide actionable recommendations for the project
+7. Analyze overall detailed summary of what is happening in the project entry (including files analyzed)
 
 RESPONSE FORMAT (JSON ONLY):
 {
@@ -189,11 +189,11 @@ RESPONSE FORMAT (JSON ONLY):
       return JSON.parse(response);
     } catch (parseError) {
       console.error('Failed to parse project analysis JSON:', parseError);
-      // Try to extract JSON if model added extra text
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
+
       return null;
     }
   } catch (error) {
@@ -222,7 +222,7 @@ RESPONSE FORMAT (JSON ONLY):
   "collaboration_opportunities": ["opportunity1", "opportunity2"]
 }`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = genAi.getGenerativeModel({ model: "gemini-1.5-pro" });
     const result = await model.generateContent(prompt);
     return JSON.parse(result.response.text());
   } catch (error) {
@@ -231,7 +231,35 @@ RESPONSE FORMAT (JSON ONLY):
   }
 };
 
+export const AnalyzeFiles = async () => {
+  try {
+    // First upload the file
+    const uploadResponse = await client.files.upload({
+      file: './db.pdf',
+      purpose: 'file-extract'
+    });
+
+    console.log('File uploaded:', uploadResponse);
+
+    const response = await client.chat.completions.create({
+      model: 'deepseek-chat', // or 'deepseek-coder'
+      messages: [
+        {
+          role: 'user',
+          content: 'Please analyze the attached file',
+          file_ids: [uploadResponse.id] // Use the uploaded file ID
+        }
+      ],
+      max_tokens: 2000
+    });
+
+    console.log('Analysis:', response.choices[0].message.content);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
 
 export default {
-  analyzeContent
+  analyzeContent,
+  AnalyzeFiles
 };
