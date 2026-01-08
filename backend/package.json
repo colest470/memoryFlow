@@ -19,9 +19,12 @@
     "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "openai": "^6.15.0",
+    "pdf-parse": "^2.4.5",
     "sqlite3": "^5.1.7",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "xlsx": "^0.18.5"
   }
 }

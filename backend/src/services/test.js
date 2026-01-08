@@ -106,7 +106,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     setError('');
     
     try {
-      // Try to call real AI backend first
       const response = await fetch(
         `${import.meta.env.VITE_API_BACKEND}/api/ai/suggestions`,
         {
@@ -128,7 +127,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
         console.log(data);
         
-        // Update form with AI suggestions
         setFormData(prev => ({
           ...prev,
           metadata: {

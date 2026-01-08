@@ -3,6 +3,9 @@ import "dotenv/config";
 import { authenticateToken } from "../../middleware/tokens.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
+import * as pdfParse from "pdf-parse";
+import mammoth from "mammoth";
+import xlsx from "xlsx";
 
 const router = express.Router();
 
@@ -195,7 +198,6 @@ function generateFallbackSuggestions(title, content, entry_type) {
   };
 }
 
-// Health check endpoint with corrected model
 router.get("/health", async (req, res) => {
   try {
     const healthModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -231,34 +233,43 @@ router.post("/analyze-files",
     const insights = [];
 
     for (const file of fileArr) {
-      // CORRECTED: Use originalname (lowercase), not originalName
       const { originalname, mimetype, buffer, size } = file;
       console.log(`Processing file: ${originalname}, type: ${mimetype}, size: ${size}`);
 
       try {
-        const base64Data = buffer.toString("base64");
+        const aiResponse = await processFileAI(originalname, mimetype, buffer, size, res);
 
-        // CORRECTED: Pass parameters correctly
-        const aiResponse = await processFileAI(originalname, mimetype, base64Data, size);
+        if (aiResponse) {
+          analysisResults[originalname] = {
+            type: mimetype,
+            size: size,
+            analysis: aiResponse.analysis || null,
+            summary: aiResponse.summary || null
+          };
 
-        analysisResults[originalname] = {
-          type: mimetype,
-          size: size,
-          analysis: aiResponse.analysis,
-          summary: aiResponse.summary
-        };
-
-        if (aiResponse.insights) {
-          insights.push(...aiResponse.insights);
+          if (aiResponse.insights && Array.isArray(aiResponse.insights)) {
+            insights.push(...aiResponse.insights);
+          }
+        } else {
+          analysisResults[originalname] = {
+            type: mimetype,
+            size: size,
+            error: 'No response from AI processor',
+            analysis: null
+          };
         }
+
+        console.log(`AI response for ${originalname}:`, aiResponse);
       } catch (fileError) {
-        console.error(`Error processing file ${originalname}:`, fileError);
+        console.error(`Error processing file ${originalname}:`, fileError.message || fileError);
         analysisResults[originalname] = {
           type: mimetype,
           size: size,
-          error: 'Failed to analyze file',
+          error: fileError.message || 'Failed to analyze file',
           analysis: null
         };
+
+        res.status(500).json({ error: fileError });
       }
     }
 
@@ -278,60 +289,109 @@ router.post("/analyze-files",
   }
 });
 
-// CORRECTED: Function should accept parameters individually, not as an object
-async function processFileAI(name, type, data, size) {
+async function processFileAI(name, type, buffer, size, res) {
   try {
-    const prompt = `Analyze this file named "${name}" which is a ${type} file with size ${size} bytes. The file content is provided in base64 format. Please analyze the content and provide:
-    1. A brief summary of what this file is about
-    2. Key insights or important information found in the file
-    3. File type-specific analysis (e.g., if it's a PDF, mention pages, if it's an image, describe what you can see)
-    
-    Base64 data: ${data.substring(0, 1000)}... [truncated]`;
+    let parts = [];
+    let extractedText = "";
 
-    console.log("Sending to AI model...");
-    
-    // Assuming you have a model configured
-    const aiResponse = await model.generateContent(prompt);
-    const responseText = aiResponse.response.text();
-    
-    console.log("AI response: ", responseText);
+    const basePrompt = `
+You are analyzing the file "${name}".
 
-    // Parse the AI response to extract structured data
+Your task is to clearly explain what this file contains and what is happening inside it.
+
+Provide:
+- A brief high-level summary of the file’s purpose
+- A clear explanation of the main logic, structure, or workflow
+- Important components, functions, or sections and what each one does
+- Key insights, assumptions, or notable design decisions
+- Any potential issues, limitations, or improvements (if applicable)
+
+Write in clear, simple language suitable for someone who did not create the file.
+`;
+
+    // 🖼 IMAGES
+    if (type.startsWith("image/")) {
+      parts = [
+        { text: basePrompt },
+        {
+          inlineData: {
+            data: buffer.toString("base64"),
+            mimeType: type,
+          },
+        },
+      ];
+    }
+
+    // 📄 PDF
+    else if (type === "application/pdf") {
+      const pdfData = await pdfParse(buffer);
+      extractedText = pdfData.text;
+    }
+
+    // 📘 WORD (.docx)
+    else if (
+      type ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      const doc = await mammoth.extractRawText({ buffer });
+      extractedText = doc.value;
+    }
+
+    // 📊 EXCEL
+    else if (
+      type ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ) {
+      const workbook = xlsx.read(buffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      extractedText = xlsx.utils.sheet_to_csv(sheet);
+    }
+
+    // 🧠 CODE + TEXT FILES
+    else if (
+      type.startsWith("text/") ||
+      name.endsWith(".js") ||
+      name.endsWith(".ts") ||
+      name.endsWith(".json")
+    ) {
+      extractedText = buffer.toString("utf-8");
+    }
+    else {
+      throw new Error("Unsupported file type for AI analysis");
+      // return {
+      //   analysis: null,
+      //   summary: null,
+      //   insights: [`${name}: Unsupported file type (${type})`],
+      // };
+    }
+
+    if (!parts.length && extractedText) {
+      const safeText = extractedText.slice(0, 12000);
+
+      parts = [
+        {
+          text: `${basePrompt}\n\nFile content:\n${safeText}`,
+        },
+      ];
+    }
+
+    const result = await model.generateContent(parts);
+    const responseText = await result.response.text();
+
     return {
       analysis: {
         fileType: type,
         fileName: name,
         fileSize: size,
-        contentSummary: responseText
+        contentSummary: responseText,
       },
-      summary: responseText.substring(0, 200) + "...", // First 200 chars as summary
-      insights: [
-        `File: ${name}`,
-        `Type: ${type}`,
-        `Size: ${size} bytes`,
-        `Analysis completed successfully`
-      ]
+      summary: responseText.slice(0, 200) + "...",
+      insights: [`Analysis of ${name} completed.`],
     };
-
   } catch (error) {
-    console.error(`Error in AI processing for file ${name}:`, error);
+    console.error(`AI analysis failed for ${name}: Maybe unsupported file`);
     
-    // Return fallback analysis
-    return {
-      analysis: {
-        fileType: type,
-        fileName: name,
-        fileSize: size,
-        error: error.message
-      },
-      summary: `Basic analysis of ${name} (${type})`,
-      insights: [
-        `File: ${name}`,
-        `Type: ${type}`,
-        `Size: ${size} bytes`,
-        `Note: AI analysis failed, using basic metadata`
-      ]
-    };
+    res.status(500).json({ error: error + name});
   }
 }
 

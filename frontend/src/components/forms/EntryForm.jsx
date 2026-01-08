@@ -13,6 +13,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [aiData, setAIData] = useState(null);
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -30,7 +31,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     link_type: 'followed_from'
   });
 
-  // Entry type descriptions for help text sentences
   const entryTypeDescriptions = {
     report: 'Formal report with findings and analysis',
     meeting_note: 'Notes and decisions from a meeting',
@@ -51,7 +51,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }
   }, [user]);
 
-  // Handle drag events
   const handleDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -69,7 +68,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     e.stopPropagation();
   };
 
-  // Handle file drop
   const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -79,23 +77,19 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     await handleFiles(files);
   };
 
-  // Handle file input change
   const handleFileInput = async (e) => {
     const files = Array.from(e.target.files);
     await handleFiles(files);
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Add tag handler
   const handleAddTag = () => {
     if (!tagInput.trim()) return;
     
     const tag = tagInput.trim().toLowerCase();
     
-    // Check if tag already exists
     if (!formData.tags.includes(tag)) {
       setFormData(prev => ({
         ...prev,
@@ -106,7 +100,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     setTagInput('');
   };
 
-  // Remove tag handler
   const handleRemoveTag = (tagToRemove) => {
     setFormData(prev => ({
       ...prev,
@@ -121,14 +114,20 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-powerpoint',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'text/markdown',
+      'application/json',
+      'application/javascript',
+      'text/javascript',
+      'application/go',
       'image/jpeg',
       'image/png',
-      'image/gif'
+      'image/gif',
+      'image/webp'
     ];
 
     const nonAllowedTypes = [
@@ -149,38 +148,35 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       'gz'
     ];
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
 
     const validFiles = files.filter(file => {
-      // Check file extension against non-allowed types
       const fileExtension = file.name.split('.').pop().toLowerCase();
-      const isNonAllowed = nonAllowedTypes.some(nonAllowedType => 
-        fileExtension === nonAllowedType ||
-        file.type.includes(`/${nonAllowedType}`) || 
-        file.name.toLowerCase().endsWith(`.${nonAllowedType}`)
+
+      if (nonAllowedTypes.includes(fileExtension)) {
+        setError(
+          `File type not allowed: ${file.name}. Videos, audio, and archives are not supported.`
+        );
+        return false;
+      }
+
+      if (file.type.startsWith('image/')) {
+        return file.size <= maxSize;
+      }
+
+      if (allowedTypes.includes(file.type)) {
+        return file.size <= maxSize;
+      }
+
+      const textExtensions = ['txt', 'js', 'ts', 'json', 'md', 'csv'];
+      if (!file.type && textExtensions.includes(fileExtension)) {
+        return file.size <= maxSize;
+      }
+
+      setError(
+        `File type not supported: ${file.name}. Please upload document or image files only.`
       );
-
-      if (isNonAllowed) {
-        setError(`File type not allowed: ${file.name}. Please upload PDF, DOC, TXT, or image files.`);
-        return false;
-      }
-
-      if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/')) {
-        const isImage = file.type.startsWith('image/');
-        const isDocument = file.type.includes('document') || file.type.includes('text');
-        
-        if (!isImage && !isDocument) {
-          setError(`File type not supported: ${file.name}. Please upload PDF, DOC, TXT, or image files.`);
-          return false;
-        }
-      }
-
-      if (file.size > maxSize) {
-        setError(`File too large: ${file.name}. Maximum size is 10MB.`);
-        return false;
-      }
-
-      return true;
+      return false;
     });
 
     if (validFiles.length === 0) return;
@@ -199,8 +195,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       status: 'pending',
       progress: 0
     }));
-
-
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
     
@@ -252,7 +246,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     setError('');
     
     try {
-      // Update file statuses to uploading
       setUploadedFiles(prev => prev.map(file => 
         filesToAnalyze.find(f => f.id === file.id) 
           ? { ...file, status: 'uploading', progress: 0 }
@@ -264,7 +257,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         formDataToSend.append('files', file.file);
       });
 
-      // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadedFiles(prev => prev.map(file => {
           if (filesToAnalyze.find(f => f.id === file.id) && file.progress < 90) {
@@ -274,7 +266,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         }));
       }, 300);
 
-      // Send to backend for analysis
       const response = await fetch(
         `${import.meta.env.VITE_API_BACKEND}/api/ai/analyze-files`,
         {
@@ -294,14 +285,15 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
       const data = await response.json();
 
-      // Update file statuses to completed
+      // Set aiData for the suggestions display
+      setAIData(data);
+
       setUploadedFiles(prev => prev.map(file => 
         filesToAnalyze.find(f => f.id === file.id) 
           ? { ...file, status: 'completed', progress: 100 }
           : file
       ));
 
-      // Update formData with file metadata
       setFormData(prev => ({
         ...prev,
         metadata: {
@@ -319,7 +311,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         }
       }));
 
-      // Extract insights from file analysis and update content
       if (data.insights && data.insights.length > 0) {
         const insightsText = data.insights.join('\n• ');
         setFormData(prev => ({
@@ -333,14 +324,25 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     } catch (err) {
       console.error('File analysis error:', err);
       
-      // Update file statuses to error
+      // Set fallback aiData for the suggestions display
+      const fallbackAIData = {
+        suggestions: {
+          tags: generateFallbackTags(formData.content, formData.title, formData.entry_type),
+          summary: generateFallbackSummary(formData.content, formData.title),
+          key_points: extractKeyPoints(formData.content),
+          confidence: 'low',
+          generated_at: new Date().toISOString()
+        }
+      };
+      
+      setAIData(fallbackAIData);
+      
       setUploadedFiles(prev => prev.map(file => 
         filesToAnalyze.find(f => f.id === file.id) 
           ? { ...file, status: 'error', progress: 0 }
           : file
       ));
-      
-      // Fallback to file metadata extraction
+      setError(`Failed to analyze some files: ${err.error}`);
       const fallbackInsights = filesToAnalyze.map(file => {
         const insights = [`File: ${file.name} (${formatFileSize(file.size)})`];
         if (file.type.includes('image/')) {
@@ -367,7 +369,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }
   };
 
-  // Manual trigger for file analysis
   const handleAnalyzeFiles = async () => {
     const pendingFiles = uploadedFiles.filter(f => f.status === 'pending');
     if (pendingFiles.length > 0) {
@@ -375,7 +376,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }
   };
 
-  // Enhanced AI suggestions with fallback
   const handleAISuggestions = async () => {
     setGeneratingAI(true);
     setError('');
@@ -415,6 +415,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       }
       
       const data = await response.json();
+      console.log('AI suggestions received:', data);
       
       setFormData(prev => ({
         ...prev,
@@ -426,6 +427,8 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           }
         }
       }));
+
+      setAIData(data);
       
       setSuccessMessage('AI suggestions generated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -458,20 +461,16 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }
   };
 
-  // Helper function to generate fallback tags
   const generateFallbackTags = (content, title, entryType) => {
     const tags = new Set();
     
-    // Add entry type as tag
     if (entryType) {
       tags.add(entryType.replace('_', '-'));
     }
     
-    // Extract words from title and content
     const text = `${title} ${content}`.toLowerCase();
     const words = text.split(/\s+/).filter(word => word.length > 3);
     
-    // Common keywords to look for
     const commonKeywords = [
       'analysis', 'report', 'meeting', 'decision', 'experiment',
       'result', 'proposal', 'insight', 'data', 'research',
@@ -484,7 +483,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       }
     });
     
-    // Add a few random high-frequency words
     const wordFrequency = {};
     words.forEach(word => {
       wordFrequency[word] = (wordFrequency[word] || 0) + 1;
@@ -500,10 +498,8 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     return Array.from(tags).slice(0, 5);
   };
 
-  // Helper function to generate fallback summary
   const generateFallbackSummary = (content, title) => {
     if (content.length > 0) {
-      // Take first 150 characters of content as summary
       return content.length > 150 
         ? content.substring(0, 150) + '...'
         : content;
@@ -511,20 +507,18 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     return `Entry about "${title}" - add more details for better summary.`;
   };
 
-  // Helper function to extract key points
   const extractKeyPoints = (content) => {
     if (!content.trim()) return [];
     
-    // Split content into sentences and take first 3-5
     const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 10);
     return sentences.slice(0, 3).map(s => s.trim());
   };
 
-  // Apply all AI suggestions
   const applyAllSuggestions = () => {
-    if (!formData.metadata.ai_suggestions) return;
+    // Use aiData if available, otherwise fall back to formData.metadata.ai_suggestions
+    const suggestions = aiData?.suggestions || formData.metadata.ai_suggestions;
     
-    const suggestions = formData.metadata.ai_suggestions;
+    if (!suggestions) return;
     
     // Apply tags
     const newTags = [...new Set([...formData.tags, ...(suggestions.tags || [])])];
@@ -554,7 +548,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  // Form submission with added file handling
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -566,14 +559,12 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         throw new Error('Title is required');
       }
 
-      // Validate entry type
       const validTypes = ['report', 'meeting_note', 'insight', 'decision', 
                          'experiment', 'outcome', 'proposal', 'result'];
       if (!validTypes.includes(formData.entry_type)) {
         throw new Error('Invalid entry type');
       }
 
-      // Prepare file data for submission
       const fileData = uploadedFiles.map(file => ({
         name: file.name,
         type: file.type,
@@ -620,22 +611,18 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
       console.log('Entry created successfully:', responseData);
       
-      // Show success message
       setSuccessMessage('Entry created successfully!');
       
-      // Call onSubmit callback if provided
       if (onSubmit) {
         await onSubmit(responseData.entry);
       }
       
-      // Clean up file preview URLs
       uploadedFiles.forEach(file => {
         if (file.preview) {
           URL.revokeObjectURL(file.preview);
         }
       });
       
-      // Close modal after short delay
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -643,7 +630,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     } catch (err) {
       console.error('Submit error:', err);
       
-      // Handle specific error types
       if (err.message.includes('401') || err.message.includes('token')) {
         setError('Session expired. Please log in again.');
       } else if (err.message.includes('403')) {
@@ -661,7 +647,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">
@@ -680,9 +665,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Error and Success Messages */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -697,7 +680,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           )}
 
-          {/* AI Assistance Section */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3 flex-1">
@@ -711,7 +693,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       AI Assistance
                     </span>
                     
-                    {/* Toggle Switch */}
                     <button
                       type="button"
                       role="switch"
@@ -730,7 +711,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                     Get smart tag suggestions, analyze files, and generate insights powered by AI.
                   </p>
                   
-                  {/* Status indicator */}
                   <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${useAI ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}`}>
                     {useAI ? (
                       <>
@@ -749,7 +729,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           </div>
 
-          {/* File Upload Section */}
           {useAI && ( 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -767,7 +746,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 </button>
               </div>
 
-              {/* Hidden file input */}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -778,7 +756,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 disabled={uploadingFiles || loading}
               />
 
-              {/* Drag & Drop Area */}
               <div
                 className={`border-2 border-dashed rounded-xl transition-all ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:border-slate-400'} ${uploadingFiles ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 onDragEnter={handleDragEnter}
@@ -798,7 +775,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 </div>
               </div>
 
-              {/* Uploaded Files List */}
               {uploadedFiles.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -833,12 +809,10 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                         key={file.id}
                         className={`flex items-center gap-4 p-3 rounded-lg border ${file.status === 'error' ? 'border-red-200 bg-red-50' : file.status === 'completed' ? 'border-green-200 bg-green-50' : 'border-slate-200'}`}
                       >
-                        {/* File Icon */}
                         <div className={`p-2 rounded-lg ${file.status === 'error' ? 'bg-red-100 text-red-600' : file.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
                           {getFileIcon(file.type, file.name)}
                         </div>
 
-                        {/* File Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <p className="font-medium text-slate-900 text-sm truncate">
@@ -849,7 +823,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                             </span>
                           </div>
 
-                          {/* Progress Bar */}
                           {(file.status === 'uploading' || file.status === 'analyzing') && (
                             <div className="w-full bg-slate-200 rounded-full h-1.5">
                               <div
@@ -859,7 +832,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                             </div>
                           )}
 
-                          {/* Status */}
                           <div className="flex items-center justify-between mt-1">
                             <span className={`text-xs font-medium ${file.status === 'error' ? 'text-red-600' : file.status === 'completed' ? 'text-green-600' : 'text-blue-600'}`}>
                               {file.status === 'pending' && 'Ready to analyze'}
@@ -874,7 +846,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                           </div>
                         </div>
 
-                        {/* Remove Button */}
                         <button
                           type="button"
                           onClick={() => handleRemoveFile(file.id)}
@@ -891,7 +862,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           )}
 
-          {/* Title Field */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-2">
               Title *
@@ -908,7 +878,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             />
           </div>
 
-          {/* Entry Type */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="entry_type" className="block text-sm font-medium text-slate-700">
@@ -936,7 +905,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </select>
           </div>
 
-          {/* Content Field with AI */}
           <div>
             <label htmlFor="content" className="block text-sm font-medium text-slate-700 mb-2">
               Content
@@ -953,7 +921,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               disabled={loading || uploadingFiles}
             />
             
-            {/* AI Suggestions Button */}
             {useAI && !generatingAI && (formData.content.trim() || formData.title.trim() || uploadedFiles.length > 0) && (
               <div className="mt-3 flex items-center gap-3">
                 <button
@@ -979,7 +946,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             )}
           </div>
 
-          {/* AI Suggestions Display */}
           {useAI && formData.metadata.ai_suggestions && (
             <div className="bg-gradient-to-br from-blue-50 via-white to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">
@@ -996,20 +962,23 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    formData.metadata.ai_suggestions.confidence === 'high'
+                    (aiData?.suggestions?.confidence || formData.metadata.ai_suggestions.confidence) === 'high'
                       ? 'bg-green-100 text-green-800'
-                      : formData.metadata.ai_suggestions.confidence === 'medium'
+                      : (aiData?.suggestions?.confidence || formData.metadata.ai_suggestions.confidence) === 'medium'
                       ? 'bg-yellow-100 text-yellow-800'
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {formData.metadata.ai_suggestions.confidence || 'medium'} confidence
+                    {(aiData?.suggestions?.confidence || formData.metadata.ai_suggestions.confidence || 'medium')} confidence
                   </span>
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({
-                      ...prev,
-                      metadata: { ...prev.metadata, ai_suggestions: null }
-                    }))}
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        metadata: { ...prev.metadata, ai_suggestions: null }
+                      }));
+                      setAIData(null);
+                    }}
                     className="text-slate-400 hover:text-slate-600 p-1"
                   >
                     <X className="w-4 h-4" />
@@ -1017,12 +986,11 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 </div>
               </div>
 
-              {/* Tags Section */}
-              {formData.metadata.ai_suggestions.tags?.length > 0 && (
+              {(aiData?.suggestions?.tags || formData.metadata.ai_suggestions.tags)?.length > 0 && (
                 <div className="mb-4">
                   <p className="text-sm font-medium text-slate-700 mb-2">Suggested Tags:</p>
                   <div className="flex flex-wrap gap-2">
-                    {formData.metadata.ai_suggestions.tags.map((tag, index) => (
+                    {(aiData?.suggestions?.tags || formData.metadata.ai_suggestions.tags).map((tag, index) => (
                       <button
                         key={tag}
                         type="button"
@@ -1054,24 +1022,22 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 </div>
               )}
 
-              {/* Summary Section */}
-              {formData.metadata.ai_suggestions.summary && (
+              {(aiData?.suggestions?.summary || formData.metadata.ai_suggestions.summary) && (
                 <div className="mb-4">
                   <p className="text-sm font-medium text-slate-700 mb-2">Summary:</p>
                   <div className="bg-white p-3 rounded-lg border border-slate-200">
                     <p className="text-sm text-slate-700 leading-relaxed">
-                      {formData.metadata.ai_suggestions.summary}
+                      {aiData?.suggestions?.summary || formData.metadata.ai_suggestions.summary}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Key Points */}
-              {formData.metadata.ai_suggestions.key_points?.length > 0 && (
+              {(aiData?.suggestions?.key_points || formData.metadata.ai_suggestions.key_points)?.length > 0 && (
                 <div className="mb-4">
                   <p className="text-sm font-medium text-slate-700 mb-2">Key Points:</p>
                   <ul className="space-y-2">
-                    {formData.metadata.ai_suggestions.key_points.map((point, index) => (
+                    {(aiData?.suggestions?.key_points || formData.metadata.ai_suggestions.key_points).map((point, index) => (
                       <li key={index} className="flex items-start gap-3 text-sm">
                         <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                         <span className="text-slate-700">{point}</span>
@@ -1081,7 +1047,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 </div>
               )}
 
-              {/* Apply All Button */}
               <button
                 type="button"
                 onClick={applyAllSuggestions}
@@ -1093,7 +1058,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           )}
 
-          {/* Tags Input */}
           <div>
             <label htmlFor="tags" className="block text-sm font-medium text-slate-700 mb-2">
               Tags
@@ -1122,7 +1086,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               </button>
             </div>
             
-            {/* Tags Display */}
             {formData.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {formData.tags.map((tag) => (
@@ -1145,7 +1108,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             )}
           </div>
 
-          {/* Parent Entry Link */}
           {parentEntryId && (
             <div>
               <label htmlFor="link_type" className="block text-sm font-medium text-slate-700 mb-2">
@@ -1166,7 +1128,6 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
             </div>
           )}
 
-          {/* Submit Buttons */}
           <div className="flex gap-3 pt-6 border-t border-slate-200">
             <button
               type="submit"
