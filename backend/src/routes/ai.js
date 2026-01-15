@@ -307,9 +307,9 @@ Provide:
 - Any potential issues, limitations, or improvements (if applicable)
 
 Write in clear, simple language suitable for someone who did not create the file.
+and finish with the confidence as (low, medium, high) in your prompt, just one word in the brackets
 `;
 
-    // 🖼 IMAGES
     if (type.startsWith("image/")) {
       parts = [
         { text: basePrompt },
@@ -383,9 +383,9 @@ Write in clear, simple language suitable for someone who did not create the file
         fileType: type,
         fileName: name,
         fileSize: size,
-        contentSummary: responseText,
+        confidence: result.split(" ").length-1,
       },
-      summary: responseText.slice(0, 200) + "...",
+      summary: responseText,
       insights: [`Analysis of ${name} completed.`],
     };
   } catch (error) {
