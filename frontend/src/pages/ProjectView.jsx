@@ -6,6 +6,7 @@ import TimelineView from '../components/timeline/TimelineView';
 import EntryForm from '../components/forms/EntryForm';
 import ProjectMembers from '../components/projects/ProjectMembers';
 import { useParams, useNavigate } from 'react-router-dom';
+import { X, Calendar, User, Tag, Link as LinkIcon, MessageSquare, Download, Copy } from 'lucide-react';
 
 export default function ProjectView() {
   const { projectId } = useParams();
@@ -18,6 +19,7 @@ export default function ProjectView() {
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeResult, setAnalyzeResult] = useState(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [showEntryModal, setShowEntryModal] = useState(false);
   const [activeTab, setActiveTab] = useState('timeline'); // 'timeline', 'analytics', 'team'
   const navigate = useNavigate();
 
@@ -81,6 +83,353 @@ export default function ProjectView() {
       setAnalyzeLoading(false);
     }
   }
+
+  const showSelectedEntry = (entry) => {
+    setSelectedEntry(entry);
+    setShowEntryModal(true);
+  };
+
+const EntryDetailModal = ({ entry, onClose, onAddRelated }) => {
+  const [copied, setCopied] = useState(false);
+
+  if (!entry) return null;
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date);
+    } catch (error) {
+      return dateString || 'Unknown date';
+    }
+  };
+
+  const copyToClipboard = () => {
+    const content = `${entry.title}\n\n${entry.content || ''}\n\nTags: ${Array.isArray(entry.tags) ? entry.tags.join(', ') : entry.tags}\nCreated: ${formatDate(entry.created_at)}\nAuthor: ${entry.author_name || entry.author?.full_name || 'Unknown'}`;
+    
+    navigator.clipboard.writeText(content)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(err => console.error('Failed to copy:', err));
+  };
+
+  const downloadAsText = () => {
+    const content = `
+=== ENTRY DETAILS ===
+Title: ${entry.title}
+Type: ${entry.entry_type}
+Created: ${formatDate(entry.created_at)}
+Author: ${entry.author_name || entry.author?.full_name || 'Unknown'}
+Department: ${entry.author_department || entry.author?.department || 'N/A'}
+Status: ${entry.status || 'active'}
+Project: ${entry.project_title || 'N/A'}
+
+=== CONTENT ===
+${entry.content || 'No content'}
+
+=== TAGS ===
+${Array.isArray(entry.tags) ? entry.tags.join(', ') : entry.tags || 'No tags'}
+
+=== METADATA ===
+${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
+    `.trim();
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `entry-${entry.id}-${entry.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 p-6 border-b border-blue-200 flex items-start justify-between z-10">
+          <div className="flex-1 pr-8">
+            <div className="flex items-center gap-3 mb-2">
+              <FileText className="w-6 h-6 text-white" />
+              <h2 className="text-2xl font-bold text-white line-clamp-2">{entry.title || 'Untitled Entry'}</h2>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm text-blue-100">
+              <span className="bg-blue-800 bg-opacity-50 px-3 py-1 rounded-full font-medium">
+                {entry.entry_type?.replace('_', ' ') || 'entry'}
+              </span>
+              {entry.status && (
+                <span className={`px-3 py-1 rounded-full font-medium ${
+                  entry.status === 'active' ? 'bg-green-800 bg-opacity-50 text-green-100' :
+                  entry.status === 'archived' ? 'bg-yellow-800 bg-opacity-50 text-yellow-100' :
+                  'bg-purple-800 bg-opacity-50 text-purple-100'
+                }`}>
+                  {entry.status}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:bg-blue-500 p-2 rounded-lg transition-colors flex-shrink-0"
+            aria-label="Close modal"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content Column */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Content Section */}
+              <div className="bg-slate-50 rounded-lg border border-slate-200 p-5">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                  Content
+                </h3>
+                <div className="prose max-w-none">
+                  <pre className="whitespace-pre-wrap font-sans text-slate-700 bg-transparent p-0">
+                    {entry.content || 'No content provided.'}
+                  </pre>
+                </div>
+              </div>
+
+              {/* AI Suggestions from Metadata */}
+              {entry.metadata?.ai_suggestions && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-5">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-indigo-600" />
+                    AI Insights
+                  </h3>
+                  {entry.metadata.ai_suggestions.suggestions?.summary && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-slate-700 mb-2">Summary</h4>
+                      <p className="text-slate-700 bg-white p-3 rounded border">
+                        {entry.metadata.ai_suggestions.suggestions.summary}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {entry.metadata.ai_suggestions.suggestions?.key_points && 
+                   Array.isArray(entry.metadata.ai_suggestions.suggestions.key_points) && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-slate-700 mb-2">Key Points</h4>
+                      <ul className="space-y-2">
+                        {entry.metadata.ai_suggestions.suggestions.key_points.map((point, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-slate-700">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {entry.metadata.ai_suggestions.suggestions?.action_items && 
+                   Array.isArray(entry.metadata.ai_suggestions.suggestions.action_items) && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-700 mb-2">Suggested Actions</h4>
+                      <ul className="space-y-2">
+                        {entry.metadata.ai_suggestions.suggestions.action_items.map((action, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-slate-700">
+                            <span className="text-green-500 mt-1">›</span>
+                            <span>{action}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 pt-4 border-t border-blue-200 text-xs text-slate-500">
+                    <div className="flex items-center gap-4">
+                      <span>Generated by: {entry.metadata.ai_suggestions.model || 'AI'}</span>
+                      <span>Confidence: {entry.metadata.ai_suggestions.suggestions?.confidence || 'high'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attached Files */}
+              {entry.metadata?.attached_files && Array.isArray(entry.metadata.attached_files) && entry.metadata.attached_files.length > 0 && (
+                <div className="bg-slate-50 rounded-lg border border-slate-200 p-5">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-slate-600" />
+                    Attached Files
+                  </h3>
+                  <div className="space-y-3">
+                    {entry.metadata.attached_files.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-white rounded border hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+                            <span className="text-blue-600 font-medium text-xs">
+                              {file.name?.split('.').pop()?.toUpperCase() || 'FILE'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{file.name || 'Unnamed File'}</p>
+                            {file.size && (
+                              <p className="text-xs text-slate-500">
+                                {typeof file.size === 'number' 
+                                  ? `${(file.size / 1024).toFixed(1)} KB`
+                                  : file.size}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar Column */}
+            <div className="space-y-6">
+              {/* Entry Info Card */}
+              <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Entry Details</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-slate-400" />
+                    <div>
+                      <p className="text-sm text-slate-500">Created</p>
+                      <p className="font-medium text-slate-900">{formatDate(entry.created_at)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-slate-400" />
+                    <div>
+                      <p className="text-sm text-slate-500">Author</p>
+                      <p className="font-medium text-slate-900">{entry.author_name || entry.author?.full_name || 'Unknown'}</p>
+                      {entry.author_department && (
+                        <p className="text-xs text-slate-500">{entry.author_department}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {entry.project_title && (
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-sm text-slate-500">Project</p>
+                      <p className="font-medium text-slate-900">{entry.project_title}</p>
+                    </div>
+                  )}
+                  
+                  <div className="pt-3 border-t border-slate-100">
+                    <p className="text-sm text-slate-500 mb-2">Entry ID</p>
+                    <code className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded font-mono">
+                      {entry.id}
+                    </code>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags Section */}
+              {entry.tags && Array.isArray(entry.tags) && entry.tags.length > 0 && (
+                <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <Tag className="w-5 h-5 text-slate-400" />
+                    Tags
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {entry.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 border border-blue-200 rounded-full text-sm font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm space-y-3">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Actions</h3>
+                
+                {onAddRelated && (
+                  <button
+                    onClick={() => {
+                      onAddRelated(entry);
+                      onClose();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                    Add Follow-up Entry
+                  </button>
+                )}
+                
+                <button
+                  onClick={copyToClipboard}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+                >
+                  <Copy className="w-4 h-4" />
+                  {copied ? 'Copied!' : 'Copy to Clipboard'}
+                </button>
+                
+                <button
+                  onClick={downloadAsText}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Download as Text
+                </button>
+              </div>
+
+              {/* JSON View (Debug) */}
+              <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900">
+                    View Raw JSON
+                  </summary>
+                  <pre className="mt-3 text-xs bg-slate-900 text-slate-100 p-3 rounded overflow-x-auto max-h-60 overflow-y-auto">
+                    {JSON.stringify(entry, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 p-4 flex justify-between items-center">
+          <div className="text-sm text-slate-500">
+            Entry ID: <span className="font-mono font-medium">{entry.id}</span>
+            {entry.created_at && (
+              <span className="ml-4">
+                Created: {new Date(entry.created_at).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-slate-700 hover:text-slate-900 font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   if (loading) {
     return (
@@ -358,9 +707,12 @@ export default function ProjectView() {
                         ))}
                       </div>
                     )}
-                    <button className="mt-2 w-full text-xs text-blue-600 hover:text-blue-700 font-medium">
-                      View Full Entry →
-                    </button>
+                      <button 
+                        onClick={() => showSelectedEntry(selectedEntry)} 
+                        className="mt-2 w-full text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        View Full Entry →
+                      </button>
                   </div>
                 </div>
               )}
@@ -378,6 +730,19 @@ export default function ProjectView() {
             setShowEntryForm(false);
             setParentEntryId(undefined);
           }}
+        />
+      )}
+
+      
+      {/* Entry Detail Modal */}
+      {showEntryModal && selectedEntry && (
+        <EntryDetailModal
+          entry={selectedEntry}
+          onClose={() => {
+            setShowEntryModal(false);
+            setSelectedEntry(null);
+          }}
+          onAddRelated={handleAddRelated}
         />
       )}
 

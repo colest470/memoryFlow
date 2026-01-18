@@ -298,7 +298,15 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
 
             {entry.content && (
               <p className="text-slate-700 mb-4">
-                {typeof entry.content === 'string' ? entry.content : JSON.stringify(entry.content)}
+                {(() => {
+                  if (typeof entry.content === 'string') {
+                    if (entry.content.split(" ").length > 50) {
+                      return entry.content.slice(0, 200) + "...";
+                    }
+                    return entry.content;
+                  }
+                  return JSON.stringify(entry.content);
+                })()}
               </p>
             )}
 

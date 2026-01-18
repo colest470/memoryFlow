@@ -389,7 +389,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       if (fallbackInsights.length > 0) {
         setFormData(prev => ({
           ...prev,
-          content: prev.content + (prev.content ? '\n\n' : '') + `📎 Files attached (${filesToAnalyze.length}):\n• ${fallbackInsights.join('\n• ')}`
+          content: prev.content + (prev.content ? '\n\n' : '') + ` Files attached (${filesToAnalyze.length}):\n• ${fallbackInsights.join('\n• ')}`
         }));
         setSuccessMessage('Files attached with basic metadata');
         setTimeout(() => setSuccessMessage(''), 3000);

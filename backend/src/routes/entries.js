@@ -611,7 +611,8 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
       `SELECT me.*, 
               p.full_name as author_name,
               p.department as author_department,
-              pr.title as project_title
+              pr.title as project_title,
+              me.metadata as metadata
       FROM memory_entries me
       JOIN profiles p ON p.id = me.author_id
       JOIN projects pr ON pr.id = me.project_id
@@ -663,6 +664,7 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
         title: entry.title,
         content: entry.content,
         entry_type: entry.entry_type,
+        metadata: JSON.parse(entry.metadata),
         status: entry.status,
         author_name: entry.author_name,
         author_department: entry.author_department,
