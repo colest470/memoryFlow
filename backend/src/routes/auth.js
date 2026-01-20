@@ -139,7 +139,7 @@ router.post("/login", [
       accessToken,
       user: {
         id: user.id,
-        name: user.name,
+        name: user.full_name,
         email: user.email,
         organization: user.organization,
         department: user.department,
@@ -219,6 +219,13 @@ router.post('/logout', authenticateToken(), async (req, res) => {
   try {
     console.log("User logging out ...");
     const { refreshToken } = req.cookies;
+    const { devices } = req.body;
+
+    if (devices === "all" && refreshToken) {
+      const userID = await db.getAsync('SELECT user_id FROM profiles WHERE token = ?', [refreshToken]);
+
+      await db.runAsync('DELETE FROM refresh_tokens WHERE user_id = ?', [userID])
+    }
     
     if (refreshToken) {
       await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
@@ -235,5 +242,20 @@ router.post('/logout', authenticateToken(), async (req, res) => {
 router.post("/changePassword", async () => {
 
 });
+
+const cleanupExpiredTokens = async () => {
+  try {
+    await db.runAsync(
+      'DELETE FROM refresh_tokens WHERE expires_at < datetime("now")'
+    );
+    console.log('Cleaned up expired refresh tokens');
+  } catch (error) {
+    console.error('Token cleanup error:', error);
+  }
+};
+
+cleanupExpiredTokens();
+
+setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 
 export default router;

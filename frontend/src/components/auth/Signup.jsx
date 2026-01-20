@@ -54,14 +54,18 @@ function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+            <div className="absolute top-[-150px] right-[-200px] w-[400px] h-[400px] rounded-full 
+        bg-[radial-gradient(circle,rgba(255,100,0,1.0)_0%,transparent_70%)]" />
+      <div className="absolute bottom-[-170px] left-[-200px] w-[400px] h-[400px] rounded-full 
+        bg-[radial-gradient(circle,rgba(255,100,0,1.0)_0%,transparent_70%)]" />
       <div className="w-full max-w-2xl">
-        <div className="bg-white rounded-2xl shadow-2xl p-10">
+        <div className="bg-black rounded-2xl shadow-2xl p-10">
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold text-slate-900 mb-3"> 
+            <h1 className="text-4xl font-extrabold text-white mb-3"> 
               MemoryFlow
             </h1>
-            <p className="text-slate-600 text-lg">
+            <p className="text-white text-lg">
               Transform knowledge into power
             </p>
           </div>
@@ -74,7 +78,7 @@ function SignUp() {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-base font-medium text-slate-700 mb-2"> 
+              <label htmlFor="email" className="block text-sm font-medium text-white mb-1"> 
                 Email Address
               </label>
               <input
@@ -83,13 +87,15 @@ function SignUp() {
                 autoComplete='on'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12" 
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="fullName" className="block text-base font-medium text-slate-700 mb-2">
+              <label htmlFor="fullName" className="block text-sm font-medium text-white mb-1">
                 Full Name
               </label>
               <input
@@ -98,14 +104,16 @@ function SignUp() {
                 autoComplete='on'
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12"
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> 
               <div>
-                <label htmlFor="password" className="block text-base font-medium text-slate-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-white mb-1">
                   Password
                 </label>
                 <div className="relative">
@@ -115,7 +123,9 @@ function SignUp() {
                     autoComplete='on'
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                    className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12 pr-12"
                     required
                   />
                   <button
@@ -136,7 +146,7 @@ function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" autoComplete="on" className="block text-base font-medium text-slate-700 mb-2">
+                <label htmlFor="confirmPassword" autoComplete="on" className="block text-sm font-medium text-white mb-1">
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -146,7 +156,9 @@ function SignUp() {
                     value={confirmPassword}
                     autoComplete='on'
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                    className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12 pr-12"
                     required
                   />
                   <button
@@ -166,7 +178,7 @@ function SignUp() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="organization" className="block text-base font-medium text-slate-700 mb-2">
+                <label htmlFor="organization" className="block text-sm font-medium text-white mb-1">
                   Organization
                 </label>
                 <input
@@ -175,13 +187,15 @@ function SignUp() {
                   autoComplete='on'
                   value={organization}
                   onChange={(e) => setOrganization(e.target.value)}
-                  className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="department" className="block text-base font-medium text-slate-700 mb-2">
+                <label htmlFor="department" className="block text-sm font-medium text-white mb-1">
                   Department
                 </label>
                 <input
@@ -190,13 +204,15 @@ function SignUp() {
                   value={department}
                   autoComplete='on'
                   onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="role" className="block text-base font-medium text-slate-700 mb-2">
+              <label htmlFor="role" className="block text-sm font-medium text-white mb-1">
                 Role
               </label>
               <select
@@ -204,7 +220,9 @@ function SignUp() {
                 value={role}
                 autoComplete='on'
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-5 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 
+                            border border-gray-700 bg-black text-white placeholder-gray-400 
+                            focus:outline-none focus:border-orange-500 transition-colors pr-12"
               >
                 <option value="student">Student</option>
                 <option value="researcher">Researcher</option>
@@ -217,7 +235,7 @@ function SignUp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3.5 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg" 
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200" 
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
@@ -226,7 +244,7 @@ function SignUp() {
           <div className="mt-8 text-center">
             <button
               onClick={() => navigate("/login")}
-              className="text-base text-blue-600 hover:text-blue-700 font-medium"
+              className="font-medium text-orange-500 hover:text-orange-400 transition-colors"
             >
               Already have an account? Sign in
             </button>

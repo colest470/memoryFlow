@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { LogOut, User, Home, Power, AlertCircle, CheckCircle, X, LogIn, UserCog } from 'lucide-react';
@@ -9,14 +9,18 @@ const Logout = () => {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [logoutSuccess, setLogoutSuccess] = useState(false);
+    const [devices, setDevices] = useState("this");
+
+    useEffect(() => {
+        console.log(user)
+    }, []);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
         try {
-            await logout(user);
+            await logout(devices);
             setLogoutSuccess(true);
             
-            // Show success message briefly before redirecting
             setTimeout(() => {
                 navigate('/login', { 
                     replace: true,
@@ -34,31 +38,6 @@ const Logout = () => {
         }
     };
 
-    const handleLogoutAllDevices = async () => {
-        setIsLoggingOut(true);
-        try {
-            // This would call a different logout function for all devices
-            await logout(true); // Assuming your logout function accepts a parameter
-            setLogoutSuccess(true);
-            
-            setTimeout(() => {
-                navigate('/login', { 
-                    replace: true,
-                    state: { 
-                        message: 'Logged out from all devices',
-                        type: 'info'
-                    }
-                });
-            }, 1500);
-        } catch (error) {
-            console.error('Logout from all devices failed:', error);
-            alert('Unable to logout from all devices. Please try again.');
-        } finally {
-            setIsLoggingOut(false);
-            setShowConfirmModal(false);
-        }
-    };
-
     const openConfirmModal = () => {
         setShowConfirmModal(true);
     };
@@ -67,19 +46,6 @@ const Logout = () => {
         setShowConfirmModal(false);
     };
 
-    const handleCancel = () => {
-        navigate(-1); // Go back to previous page
-    };
-
-    const handleGoToDashboard = () => {
-        navigate('/dashboard');
-    };
-
-    const handleGoToProfile = () => {
-        navigate('/profile');
-    };
-
-    // If already logged out but component is still mounted
     if (!user && !logoutSuccess) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
@@ -93,14 +59,14 @@ const Logout = () => {
                         <div className="space-y-4">
                             <button
                                 onClick={() => navigate('/login')}
-                                className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                                className="w-full flex items-center justify-center gap-3 px-6 py-3 text-white font-medium rounded-lg transition-colors bg-orange-600 hover:bg-orange-700"
                             >
                                 <LogIn className="w-5 h-5" />
                                 Go to Login
                             </button>
                             <button
                                 onClick={() => navigate('/')}
-                                className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
+                                className="w-full flex items-center justify-center gap-3 px-6 py-3 text-white font-medium rounded-lg transition-colors bg-orange-600 hover:bg-orange-700"
                             >
                                 <Home className="w-5 h-5" />
                                 Go to Homepage
@@ -113,17 +79,20 @@ const Logout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-            {/* Main Logout Card */}
+        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+            <div className="absolute top-[-150px] right-[-200px] w-[400px] h-[400px] rounded-full 
+        bg-[radial-gradient(circle,rgba(255,100,0,1.0)_0%,transparent_70%)]" />
+        <div className="absolute bottom-[-170px] left-[-200px] w-[400px] h-[400px] rounded-full 
+            bg-[radial-gradient(circle,rgba(255,100,0,1.0)_0%,transparent_70%)]" />
             <div className="max-w-md w-full">
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div className="bg-black rounded-2xl shadow-xl overflow-hidden">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-8 text-center">
+                    <div className="bg-black p-8 text-center">
                         <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-white/20">
                             <LogOut className="w-10 h-10 text-white" />
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Logout</h1>
-                        <p className="text-slate-300">
+                        <h1 className="text-3xl font-extrabold text-white mb-2">Logout</h1>
+                        <p className="text-white">
                             {user?.email || user?.name ? (
                                 <>Are you sure you want to logout, <strong>{user.name || user.email.split('@')[0]}</strong>?</>
                             ) : (
@@ -135,12 +104,12 @@ const Logout = () => {
                     {/* Current User Info */}
                     {user && (
                         <div className="p-6 border-b border-slate-100">
-                            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+                            <div className="flex items-center gap-4 p-4 bg-black rounded-lg">
                                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
                                     {user.name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
                                 </div>
                                 <div className="flex-1">
-                                    <p className="font-semibold text-slate-900">
+                                    <p className="font-semibold text-white">
                                         {user.name || 'User'}
                                     </p>
                                     <p className="text-sm text-slate-600">
@@ -167,7 +136,10 @@ const Logout = () => {
                         ) : (
                             <>
                                 <button
-                                    onClick={handleLogout}
+                                    onClick={() => {
+                                        setDevices("this");
+                                        handleLogout();
+                                    }}
                                     disabled={isLoggingOut}
                                     className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
@@ -197,26 +169,26 @@ const Logout = () => {
                                     <p className="text-center text-sm text-slate-500 mb-4">Changed your mind?</p>
                                     <div className="grid grid-cols-2 gap-3">
                                         <button
-                                            onClick={handleGoToDashboard}
+                                            onClick={() => navigate("/dashboard")}
                                             disabled={isLoggingOut}
-                                            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+                                            className="w-full flex items-center justify-center gap-3 px-6 py-3 text-white font-medium rounded-lg transition-colors bg-orange-600 hover:bg-orange-700"
                                         >
                                             <Home className="w-4 h-4" />
                                             Dashboard
                                         </button>
                                         <button
-                                            onClick={handleGoToProfile}
+                                            onClick={() => navigate("/profile")}
                                             disabled={isLoggingOut}
-                                            className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+                                            className="w-full flex items-center justify-center gap-3 px-6 py-3 text-white font-medium rounded-lg transition-colors bg-orange-600 hover:bg-orange-700"
                                         >
                                             <UserCog className="w-4 h-4" />
                                             Profile
                                         </button>
                                     </div>
                                     <button
-                                        onClick={handleCancel}
+                                        onClick={() => navigate(-1)}
                                         disabled={isLoggingOut}
-                                        className="w-full mt-3 px-4 py-3 text-slate-600 hover:text-slate-800 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                        className="w-full mt-3 px-4 py-3 text-white font-medium rounded-lg bg-orange-600 hover:bg-orange-500 transition-colors disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>
@@ -224,13 +196,6 @@ const Logout = () => {
                             </>
                         )}
                     </div>
-                </div>
-
-                {/* Footer Note */}
-                <div className="mt-6 text-center">
-                    <p className="text-sm text-slate-500">
-                        Having trouble logging out? <a href="/support" className="text-blue-600 hover:text-blue-700 font-medium">Contact support</a>
-                    </p>
                 </div>
             </div>
 
@@ -275,7 +240,10 @@ const Logout = () => {
 
                             <div className="flex gap-3">
                                 <button
-                                    onClick={handleLogoutAllDevices}
+                                    onClick={() => {
+                                        setDevices("all");
+                                        handleLogout();
+                                    }}
                                     disabled={isLoggingOut}
                                     className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
@@ -293,24 +261,6 @@ const Logout = () => {
                     </div>
                 </div>
             )}
-
-            {/* Session Info Tooltip (Optional) */}
-            <div className="fixed bottom-6 right-6">
-                <div className="group relative">
-                    <button className="w-10 h-10 bg-slate-800 hover:bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg">
-                        <User className="w-5 h-5" />
-                    </button>
-                    <div className="absolute bottom-full right-0 mb-2 w-64 p-4 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                        <h4 className="font-semibold text-slate-900 mb-2">Active Session</h4>
-                        <p className="text-sm text-slate-600">
-                            Logged in as <strong>{user?.email}</strong>
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Device: {navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}
-                        </p>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };

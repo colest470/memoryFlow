@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { TextPlugin } from 'gsap/TextPlugin';
+import { useNavigate } from 'react-router-dom';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
@@ -17,12 +18,11 @@ const Home = () => {
   const statsRef = useRef([]);
   const flowPathRef = useRef(null);
 
-  // Initialize GSAP animations
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Create floating particles
     createParticles();
     
-    // Hero section animations
     const heroTimeline = gsap.timeline();
     
     // Animate brain logo
@@ -323,11 +323,8 @@ const Home = () => {
           </div>
           
           <div className="flex flex-wrap gap-6">
-            <button className="cta-button px-8 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-cyan-500/30 transition-all duration-300 hover:scale-105 transform">
-              🚀 Start Free Trial
-            </button>
-            <button className="cta-button px-8 py-4 bg-transparent border-2 border-cyan-500 rounded-xl font-bold text-lg hover:bg-cyan-500/10 transition-all duration-300">
-              📽️ Watch Demo
+            <button onClick={navigate("/dashboard")} className="cta-button px-8 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-cyan-500/30 transition-all duration-300 hover:scale-105 transform">
+              Explore
             </button>
           </div>
         </div>

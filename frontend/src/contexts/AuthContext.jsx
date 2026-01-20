@@ -140,11 +140,12 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const logout = async (user) => {
+  const logout = async (devices) => {
     try {
       const response = await apiRequest(`/api/auth/logout`, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ devices: devices }),
         credentials: "include"
       });
 
