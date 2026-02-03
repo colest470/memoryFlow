@@ -302,12 +302,12 @@ router.post("/analyze-files",
       message: `Analyzed ${fileArr.length} file(s)`
     });
 
-  } catch (error) {
-    console.error(`Error in analyze-files route:`, error);
-    return res.status(500).json({ 
-      error: 'Failed to analyze files',
-      details: error.message 
-    });
+  } catch (fileError) {
+    console.error(`Error processing file:`, fileError.message);
+    analysisResults[originalname] = {
+      error: fileError.message || 'Failed to analyze file',
+      success: false
+    };
   }
 });
 
@@ -344,7 +344,6 @@ and finish with the confidence as (low, medium, high) in your prompt, just one w
       ];
     }
 
-    // 📄 PDF
     else if (type === "application/pdf") {
       const pdfData = await pdfParse(buffer);
       extractedText = pdfData.text;
@@ -396,9 +395,10 @@ and finish with the confidence as (low, medium, high) in your prompt, just one w
         },
       ];
     }
-
     const result = await model.generateContent(parts);
     const responseText = result.response.text();
+
+    console.log(responseText);
 
     return {
       analysis: {
@@ -411,7 +411,8 @@ and finish with the confidence as (low, medium, high) in your prompt, just one w
       insights: [`Analysis of ${name} completed.`],
     };
   } catch (error) {
-    console.error(`AI analysis failed for ${name}: Maybe unsupported file`, error);
+    console.error(`AI analysis failed for ${name}:`, error.message);
+    throw error; 
   }
 }
 
