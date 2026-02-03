@@ -234,8 +234,7 @@ export const entriesAPI = {
   },
 
   async analyzeProject(projectId) {
-    const response = await fetch(`${API_URL}/api/projects/${projectId}/analyze`, {
-      method: 'POST',
+    const response = await fetch(`${API_URL}/api/ai/${projectId}/analyze`, {
       headers: getAuthHeader(),
       credentials: 'include'
     });
@@ -244,6 +243,8 @@ export const entriesAPI = {
       const error = await response.json();
       throw new Error(error.error || 'Failed to analyze project');
     }
+
+    console.log(response.json());
 
     return response.json();
   },

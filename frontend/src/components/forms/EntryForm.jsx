@@ -250,13 +250,13 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
   };
 
   const getFileIcon = (fileType, fileName) => {
-    if (fileType.startsWith('image/')) return <Image className="w-5 h-5" />;
-    if (fileType.includes('pdf')) return <FileText className="w-5 h-5" />;
-    if (fileType.includes('word') || fileType.includes('document')) return <FileText className="w-5 h-5" />;
-    if (fileType.includes('excel') || fileType.includes('spreadsheet')) return <FileText className="w-5 h-5" />;
-    if (fileType.includes('powerpoint') || fileType.includes('presentation')) return <FileText className="w-5 h-5" />;
-    if (fileType.includes('text/')) return <FileText className="w-5 h-5" />;
-    return <File className="w-5 h-5" />;
+    if (fileType.startsWith('image/')) return <Image className="w-5 h-5 text-orange-500" />;
+    if (fileType.includes('pdf')) return <FileText className="w-5 h-5 text-orange-500" />;
+    if (fileType.includes('word') || fileType.includes('document')) return <FileText className="w-5 h-5 text-orange-500" />;
+    if (fileType.includes('excel') || fileType.includes('spreadsheet')) return <FileText className="w-5 h-5 text-orange-500" />;
+    if (fileType.includes('powerpoint') || fileType.includes('presentation')) return <FileText className="w-5 h-5 text-orange-500" />;
+    if (fileType.includes('text/')) return <FileText className="w-5 h-5 text-orange-500" />;
+    return <File className="w-5 h-5 text-orange-500" />;
   };
 
   const formatFileSize = (bytes) => {
@@ -307,13 +307,12 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
       clearInterval(progressInterval);
 
-      if (!response.ok) {
+      if (!response.ok || (response.json()).insights.length) {
         throw new Error('Failed to analyze files');
       }
 
       const data = await response.json();
 
-      // Set aiData for the suggestions display
       setAIData(data);
       setAiDataFiles(prevData => [...prevData, data?.analysis]);
 
@@ -676,20 +675,20 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+      <div className="bg-gray-900 border border-orange-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-2xl font-bold text-orange-300">
               {parentEntryId ? 'Add Related Entry' : 'Add Knowledge'}
             </h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-orange-400 mt-1">
               {parentEntryId ? 'Connect this to an existing entry' : 'Document new knowledge'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg"
+            className="text-orange-400 hover:text-orange-300 transition-colors p-1 hover:bg-gray-800 rounded-lg"
             disabled={loading}
           >
             <X className="w-6 h-6" />
@@ -698,29 +697,29 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-3">
+            <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm flex items-start gap-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm flex items-start gap-3">
+            <div className="bg-green-900/30 border border-green-700 text-green-300 px-4 py-3 rounded-lg text-sm flex items-start gap-3">
               <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <span>{successMessage}</span>
             </div>
           )}
 
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+          <div className="bg-gradient-to-r from-orange-950/30 to-amber-950/30 border border-orange-800 rounded-lg p-4 hover:border-orange-700 transition-colors">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3 flex-1">
                 <div className="pt-0.5">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <Sparkles className="w-5 h-5 text-orange-500" />
                 </div>
                 
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-orange-300">
                       AI Assistance
                     </span>
                     
@@ -729,7 +728,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       role="switch"
                       aria-checked={useAI}
                       onClick={() => setUseAI(!useAI)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${useAI ? 'bg-blue-600' : 'bg-slate-300'}`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-offset-2 focus:ring-offset-gray-900 ${useAI ? 'bg-orange-600' : 'bg-gray-700'}`}
                       disabled={uploadingFiles}
                     >
                       <span
@@ -738,11 +737,11 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                     </button>
                   </div>
                   
-                  <p className="text-sm text-slate-600 mb-3">
+                  <p className="text-sm text-orange-400 mb-3">
                     Get smart tag suggestions, analyze files, and generate insights powered by AI.
                   </p>
                   
-                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${useAI ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${useAI ? 'bg-orange-900/40 text-orange-300' : 'bg-gray-800 text-gray-400'}`}>
                     {useAI ? (
                       <>
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -750,7 +749,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       </>
                     ) : (
                       <>
-                        <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                        <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
                         AI assistance disabled
                       </>
                     )}
@@ -763,13 +762,13 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           {useAI && ( 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="block text-sm font-medium text-orange-400">
                   Attach Files for AI Analysis
                 </label>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                  className="text-sm text-orange-400 hover:text-orange-300 font-medium flex items-center gap-1"
                   disabled={uploadingFiles}
                 >
                   <Upload className="w-4 h-4" />
@@ -788,7 +787,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               />
 
               <div
-                className={`border-2 border-dashed rounded-xl transition-all ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:border-slate-400'} ${uploadingFiles ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`border-2 border-dashed rounded-xl transition-all ${isDragging ? 'border-orange-500 bg-orange-950/20' : 'border-gray-700 hover:border-orange-600'} ${uploadingFiles ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
                 onDragOver={handleDragOver}
@@ -796,11 +795,11 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 onClick={() => !uploadingFiles && fileInputRef.current?.click()}
               >
                 <div className="p-8 text-center">
-                  <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-blue-500' : 'text-slate-400'}`} />
-                  <p className="text-slate-700 font-medium mb-2">
+                  <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragging ? 'text-orange-500' : 'text-gray-600'}`} />
+                  <p className="text-orange-300 font-medium mb-2">
                     {isDragging ? 'Drop files here' : 'Drag & drop files here'}
                   </p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-gray-400">
                     or click to browse. Supports PDF, DOC, TXT, Images (max 10MB each)
                   </p>
                 </div>
@@ -809,7 +808,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               {uploadedFiles.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-700">
+                    <span className="text-sm font-medium text-orange-400">
                       Files ({uploadedFiles.length})
                     </span>
                     {useAI && uploadedFiles.some(f => f.status === 'pending') && (
@@ -817,7 +816,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                         type="button"
                         onClick={handleAnalyzeFiles}
                         disabled={uploadingFiles}
-                        className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        className="text-sm bg-orange-600 text-white px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
                       >
                         {uploadingFiles ? (
                           <>
@@ -838,33 +837,33 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                     {uploadedFiles.map(file => (
                       <div
                         key={file.id}
-                        className={`flex items-center gap-4 p-3 rounded-lg border ${file.status === 'error' ? 'border-red-200 bg-red-50' : file.status === 'completed' ? 'border-green-200 bg-green-50' : 'border-slate-200'}`}
+                        className={`flex items-center gap-4 p-3 rounded-lg border ${file.status === 'error' ? 'border-red-800 bg-red-900/30' : file.status === 'completed' ? 'border-green-800 bg-green-900/30' : 'border-gray-700'}`}
                       >
-                        <div className={`p-2 rounded-lg ${file.status === 'error' ? 'bg-red-100 text-red-600' : file.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
+                        <div className={`p-2 rounded-lg ${file.status === 'error' ? 'bg-red-900/40 text-red-400' : file.status === 'completed' ? 'bg-green-900/40 text-green-400' : 'bg-gray-800 text-orange-500'}`}>
                           {getFileIcon(file.type, file.name)}
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="font-medium text-slate-900 text-sm truncate">
+                            <p className="font-medium text-gray-200 text-sm truncate">
                               {file.name}
                             </p>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-gray-400">
                               {formatFileSize(file.size)}
                             </span>
                           </div>
 
                           {(file.status === 'uploading' || file.status === 'analyzing') && (
-                            <div className="w-full bg-slate-200 rounded-full h-1.5">
+                            <div className="w-full bg-gray-700 rounded-full h-1.5">
                               <div
-                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                                className="bg-orange-600 h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${file.progress}%` }}
                               />
                             </div>
                           )}
 
                           <div className="flex items-center justify-between mt-1">
-                            <span className={`text-xs font-medium ${file.status === 'error' ? 'text-red-600' : file.status === 'completed' ? 'text-green-600' : 'text-blue-600'}`}>
+                            <span className={`text-xs font-medium ${file.status === 'error' ? 'text-red-400' : file.status === 'completed' ? 'text-green-400' : 'text-orange-400'}`}>
                               {file.status === 'pending' && 'Ready to analyze'}
                               {file.status === 'uploading' && 'Uploading...'}
                               {file.status === 'analyzing' && 'Analyzing...'}
@@ -872,7 +871,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                               {file.status === 'error' && 'Analysis failed'}
                             </span>
                             {file.status === 'uploading' || file.status === 'analyzing' ? (
-                              <span className="text-xs text-slate-500">{file.progress}%</span>
+                              <span className="text-xs text-gray-400">{file.progress}%</span>
                             ) : null}
                           </div>
                         </div>
@@ -881,7 +880,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                           type="button"
                           onClick={() => handleRemoveFile(file.id)}
                           disabled={uploadingFiles}
-                          className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -889,21 +888,21 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                     ))}
                   </div>
                     {useAI && aiData?.analysis && Object.keys(aiData.analysis).length > 0 && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-3">AI File Analysis Results</h3>
+                      <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                        <h3 className="text-lg font-semibold text-orange-300 mb-3">AI File Analysis Results</h3>
                         <div className="space-y-4">
                           {Object.entries(aiData.analysis).map(([filename, analysisData]) => (
-                            <div key={filename} className="p-3 bg-white rounded border border-gray-300">
+                            <div key={filename} className="p-3 bg-gray-900 rounded border border-gray-700">
                               <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-medium text-gray-900">{filename}</h4>
-                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                                <h4 className="font-medium text-gray-200">{filename}</h4>
+                                <span className="text-xs px-2 py-1 bg-orange-900/40 text-orange-300 rounded-full">
                                   {analysisData?.confidence || 'medium'} confidence
                                 </span>
                               </div>
                               
                               {analysisData?.summary && (
                                 <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Summary:</label>
+                                  <label className="block text-sm font-medium text-gray-300 mb-1">Summary:</label>
                                   <textarea
                                     value={analysisData.summary}
                                     onChange={(e) => {
@@ -919,7 +918,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                                         }
                                       }));
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm resize-y"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm resize-y text-white"
                                     rows="2"
                                   />
                                 </div>
@@ -927,11 +926,11 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                               
                               {analysisData?.keyPoints && analysisData.keyPoints.length > 0 && (
                                 <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Key Points:</label>
+                                  <label className="block text-sm font-medium text-gray-300 mb-1">Key Points:</label>
                                   <div className="space-y-1">
                                     {analysisData.keyPoints.map((point, idx) => (
                                       <div key={idx} className="flex items-start gap-2">
-                                        <span className="text-blue-500 mt-1">•</span>
+                                        <span className="text-orange-500 mt-1">•</span>
                                         <input
                                           type="text"
                                           value={point}
@@ -949,7 +948,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                                               }
                                             }));
                                           }}
-                                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                          className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-white"
                                         />
                                       </div>
                                     ))}
@@ -959,10 +958,10 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                               
                               {analysisData?.tags && analysisData.tags.length > 0 && (
                                 <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Suggested Tags:</label>
+                                  <label className="block text-sm font-medium text-gray-300 mb-1">Suggested Tags:</label>
                                   <div className="flex flex-wrap gap-1">
                                     {analysisData.tags.map((tag, idx) => (
-                                      <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">
+                                      <span key={idx} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
                                         {tag}
                                       </span>
                                     ))}
@@ -973,7 +972,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                               <button
                                 type="button"
                                 onClick={() => addFileAnalysis(aiData.analysis)}
-                                className="mt-2 px-4 py-2 bg-black text-white text-sm rounded hover:bg-gray-800 transition-colors"
+                                className="mt-2 px-4 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition-colors"
                               >
                                 Add this content to entry
                               </button>
@@ -988,7 +987,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           )}
 
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-2">
+            <label htmlFor="title" className="block text-sm font-medium text-orange-400 mb-2">
               Title *
             </label>
             <input
@@ -996,7 +995,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-orange-600 outline-none transition-colors text-white"
               placeholder="What is this knowledge about?"
               required
               disabled={loading || uploadingFiles}
@@ -1005,10 +1004,10 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="entry_type" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="entry_type" className="block text-sm font-medium text-orange-400">
                 Entry Type *
               </label>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-orange-300">
                 {entryTypeDescriptions[formData.entry_type]}
               </span>
             </div>
@@ -1016,24 +1015,24 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               id="entry_type"
               value={formData.entry_type}
               onChange={(e) => setFormData(prev => ({ ...prev, entry_type: e.target.value }))}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-orange-600 outline-none transition-colors appearance-none text-white"
               disabled={loading || uploadingFiles}
             >
-              <option value="report">📊 Report</option>
-              <option value="meeting_note">📝 Meeting Note</option>
-              <option value="insight">💡 Insight</option>
-              <option value="decision">✅ Decision</option>
-              <option value="experiment">🔬 Experiment</option>
-              <option value="outcome">🎯 Outcome</option>
-              <option value="proposal">📋 Proposal</option>
-              <option value="result">📈 Result</option>
+              <option value="report" className="bg-gray-800">📊 Report</option>
+              <option value="meeting_note" className="bg-gray-800">📝 Meeting Note</option>
+              <option value="insight" className="bg-gray-800">💡 Insight</option>
+              <option value="decision" className="bg-gray-800">✅ Decision</option>
+              <option value="experiment" className="bg-gray-800">🔬 Experiment</option>
+              <option value="outcome" className="bg-gray-800">🎯 Outcome</option>
+              <option value="proposal" className="bg-gray-800">📋 Proposal</option>
+              <option value="result" className="bg-gray-800">📈 Result</option>
             </select>
           </div>
 
           <div>
-            <label htmlFor="content" className="block text-sm font-medium text-slate-700 mb-2">
+            <label htmlFor="content" className="block text-sm font-medium text-orange-400 mb-2">
               Content
-              <span className="text-slate-400 text-sm font-normal ml-1">
+              <span className="text-gray-400 text-sm font-normal ml-1">
                 (What is the content about?)
               </span>
             </label>
@@ -1041,7 +1040,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               id="content"
               value={formData.content}
               onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors min-h-[200px] resize-y"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-orange-600 outline-none transition-colors text-white min-h-[200px] resize-y"
               placeholder="Describe the details, findings, insights, or results..."
               disabled={loading || uploadingFiles}
             />
@@ -1051,36 +1050,36 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 <button
                   type="button"
                   onClick={handleAISuggestions}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium text-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all font-medium text-sm"
                   disabled={loading || uploadingFiles}
                 >
                   <Sparkles className="w-4 h-4" />
                   Get AI Suggestions
                 </button>
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-gray-400">
                   We'll analyze your content and suggest tags, summary, and more.
                 </span>
               </div>
             )}
             
             {generatingAI && (
-              <div className="mt-3 flex items-center gap-3 text-blue-600">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <div className="mt-3 flex items-center gap-3 text-orange-400">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-500"></div>
                 <span className="text-sm font-medium">Analyzing content and generating suggestions...</span>
               </div>
             )}
           </div>
 
           {useAI && formData.metadata.ai_suggestions && (
-            <div className="bg-gradient-to-br from-blue-50 via-white to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+            <div className="bg-gradient-to-br from-orange-950/20 via-gray-900 to-amber-950/20 border border-orange-800 rounded-lg p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 bg-orange-900/40 rounded-lg">
+                    <Sparkles className="w-5 h-5 text-orange-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-900">AI Suggestions</h3>
-                    <p className="text-xs text-slate-500">
+                    <h3 className="font-semibold text-orange-300">AI Suggestions</h3>
+                    <p className="text-xs text-gray-400">
                       Generated {new Date(formData.metadata.ai_suggestions.generated_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </p>
                   </div>
@@ -1088,10 +1087,10 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                     (aiData?.suggestions?.confidence || formData.metadata.ai_suggestions.confidence) === 'high'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-green-900/40 text-green-300'
                       : (aiData?.suggestions?.confidence || formData.metadata.ai_suggestions.confidence) === 'medium'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
+                      ? 'bg-yellow-900/40 text-yellow-300'
+                      : 'bg-red-900/40 text-red-300'
                   }`}>
                     {(aiData?.suggestions?.confidence || formData.metadata.ai_suggestions.confidence || 'medium')} confidence
                   </span>
@@ -1104,7 +1103,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       }));
                       setAIData(null);
                     }}
-                    className="text-slate-400 hover:text-slate-600 p-1"
+                    className="text-gray-400 hover:text-gray-300 p-1"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1113,7 +1112,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
               {(aiData?.suggestions?.tags || formData.metadata.ai_suggestions.tags)?.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-slate-700 mb-2">Suggested Tags:</p>
+                  <p className="text-sm font-medium text-orange-300 mb-2">Suggested Tags:</p>
                   <div className="flex flex-wrap gap-2">
                     {(aiData?.suggestions?.tags || formData.metadata.ai_suggestions.tags).map((tag, index) => (
                       <button
@@ -1131,8 +1130,8 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                         }}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
                           formData.tags.includes(tag)
-                            ? 'bg-green-100 text-green-800 border border-green-300'
-                            : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-50 hover:border-blue-400'
+                            ? 'bg-green-900/40 text-green-300 border border-green-700'
+                            : 'bg-gray-800 text-orange-400 border border-orange-700 hover:bg-gray-700 hover:border-orange-600'
                         }`}
                       >
                         {formData.tags.includes(tag) ? (
@@ -1149,9 +1148,9 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
               {(aiData?.suggestions?.summary || formData.metadata.ai_suggestions.summary) && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-slate-700 mb-2">Summary:</p>
-                  <div className="bg-white p-3 rounded-lg border border-slate-200">
-                    <p className="text-sm text-slate-700 leading-relaxed">
+                  <p className="text-sm font-medium text-orange-300 mb-2">Summary:</p>
+                  <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                    <p className="text-sm text-gray-300 leading-relaxed">
                       {aiData?.suggestions?.summary || formData.metadata.ai_suggestions.summary}
                     </p>
                   </div>
@@ -1160,12 +1159,12 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
               {(aiData?.suggestions?.key_points || formData.metadata.ai_suggestions.key_points)?.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-slate-700 mb-2">Key Points:</p>
+                  <p className="text-sm font-medium text-orange-300 mb-2">Key Points:</p>
                   <ul className="space-y-2">
                     {(aiData?.suggestions?.key_points || formData.metadata.ai_suggestions.key_points).map((point, index) => (
                       <li key={index} className="flex items-start gap-3 text-sm">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <span className="text-slate-700">{point}</span>
+                        <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="text-gray-300">{point}</span>
                       </li>
                     ))}
                   </ul>
@@ -1175,7 +1174,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               <button
                 type="button"
                 onClick={applyAllSuggestions}
-                className="w-full mt-2 px-4 py-2.5 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 rounded-lg hover:from-blue-200 hover:to-indigo-200 transition-all font-medium text-sm flex items-center justify-center gap-2"
+                className="w-full mt-2 px-4 py-2.5 bg-gradient-to-r from-orange-900/30 to-amber-900/30 text-orange-300 rounded-lg hover:from-orange-800/40 hover:to-amber-800/40 transition-all font-medium text-sm flex items-center justify-center gap-2"
               >
                 <Check className="w-4 h-4" />
                 Apply All Suggestions
@@ -1184,9 +1183,9 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           )}
 
           <div>
-            <label htmlFor="tags" className="block text-sm font-medium text-slate-700 mb-2">
+            <label htmlFor="tags" className="block text-sm font-medium text-orange-400 mb-2">
               Tags
-              <span className="text-slate-400 text-sm font-normal ml-1">
+              <span className="text-gray-400 text-sm font-normal ml-1">
                 (Press Enter or click Add to add tags)
               </span>
             </label>
@@ -1197,14 +1196,14 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-orange-600 outline-none transition-colors text-white"
                 placeholder="Add tags like 'api', 'integration', 'bug-fix'..."
                 disabled={loading || uploadingFiles}
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-5 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+                className="px-5 py-3 bg-gray-800 text-orange-400 rounded-lg hover:bg-gray-700 transition-colors font-medium border border-gray-700"
                 disabled={loading || uploadingFiles}
               >
                 Add
@@ -1216,13 +1215,13 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 {formData.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium flex items-center gap-2 group"
+                    className="px-3 py-1.5 bg-orange-900/40 text-orange-300 rounded-lg text-sm font-medium flex items-center gap-2 group border border-orange-700"
                   >
                     {tag}
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="text-blue-600 hover:text-blue-900 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                      className="text-orange-400 hover:text-orange-300 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
                       disabled={loading || uploadingFiles}
                     >
                       <X className="w-3 h-3" />
@@ -1235,29 +1234,29 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
           {parentEntryId && (
             <div>
-              <label htmlFor="link_type" className="block text-sm font-medium text-slate-700 mb-2">
+              <label htmlFor="link_type" className="block text-sm font-medium text-orange-400 mb-2">
                 How is this related to the parent entry?
               </label>
               <select
                 id="link_type"
                 value={formData.link_type}
                 onChange={(e) => setFormData(prev => ({ ...prev, link_type: e.target.value }))}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-orange-600 outline-none transition-colors text-white"
                 disabled={loading || uploadingFiles}
               >
-                <option value="followed_from">📖 Followed from (continuation)</option>
-                <option value="revised_by">✏️ Revised by (update or correction)</option>
-                <option value="related_to">🔗 Related to (connected topic)</option>
-                <option value="built_upon">🏗️ Built upon (based on this work)</option>
+                <option value="followed_from" className="bg-gray-800">📖 Followed from (continuation)</option>
+                <option value="revised_by" className="bg-gray-800">✏️ Revised by (update or correction)</option>
+                <option value="related_to" className="bg-gray-800">🔗 Related to (connected topic)</option>
+                <option value="built_upon" className="bg-gray-800">🏗️ Built upon (based on this work)</option>
               </select>
             </div>
           )}
 
-          <div className="flex gap-3 pt-6 border-t border-slate-200">
+          <div className="flex gap-3 pt-6 border-t border-gray-800">
             <button
               type="submit"
               disabled={loading || uploadingFiles}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
+              className="flex-1 bg-gradient-to-r from-orange-600 to-amber-600 text-white py-3.5 rounded-lg font-semibold hover:from-orange-700 hover:to-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -1277,7 +1276,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
               type="button"
               onClick={onClose}
               disabled={loading || uploadingFiles}
-              className="px-8 py-3.5 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="px-8 py-3.5 border border-gray-700 text-orange-300 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

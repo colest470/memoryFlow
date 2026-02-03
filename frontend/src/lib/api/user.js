@@ -25,12 +25,9 @@ export const loadData = async () => {
   }
 }
 
-export const getUserProfile = async () => {
+export const getUserProfile = async (email) => {
   try {
-    const response = await fetch(`${API_URL}/api/user/profile`, {
-      headers: getAuthHeader(),
-      credentials: 'include'
-    });
+    const response = await fetch(`${API_URL}/api/user/${email}`);
 
     if (!response.ok) {
       throw new Error('Failed to fetch user profile');

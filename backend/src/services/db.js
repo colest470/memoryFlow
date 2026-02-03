@@ -102,6 +102,7 @@ const initDatabase = async () => {
                 organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
                 status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'lesson_learned')),
                 department TEXT,
+                file_path TEXT UNIQUE DEFAULT "",
                 tags TEXT, -- Store as comma-separated or JSON
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -167,3 +168,6 @@ const initDatabase = async () => {
 initDatabase();
 
 export default db;
+
+// markbironga@gmail.com - ZhMQVbZYYh!@7Dn
+// example2@gmail.com - Rjq.F@LyPW_6EqW

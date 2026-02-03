@@ -44,6 +44,69 @@ router.get('/profile', authenticateToken(), async (req, res) => {
   }
 });
 
+router.get("/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const user = await db.getAsync(`SELECT id, full_name, organization, department, role  FROM profiles WHERE email = ?`, [email]);
+
+    console.log(user);
+
+    if (!user) {
+      res.status(200).json({ success: false, error: "User not found" });
+    }
+
+    const projects = await db.allAsync(
+      `SELECT p.*, pm.role as project_role 
+       FROM projects p
+       JOIN project_members pm ON p.id = pm.project_id
+       WHERE pm.user_id = ?`,
+      [user.id]
+    );
+
+    if (!projects) {
+      res.status(200).json({ success: true, data: null });
+      return;
+    }
+
+    const entries = await db.allAsync(
+      `SELECT * FROM memory_entries 
+       WHERE author_id = ? 
+       ORDER BY created_at DESC`,
+      [user.id]
+    );
+
+    let entryLinks = [];
+    for (const entry of entries) {
+      const links = await db.allAsync(
+        `SELECT * FROM entry_links 
+         WHERE parent_entry_id = ? OR child_entry_id = ?`,
+        [entry.id, entry.id]
+      );
+      entryLinks = [...entryLinks, ...links];
+    }
+
+    const organizations = await db.allAsync(
+      `SELECT o.*, uo.role as org_role 
+       FROM organizations o
+       JOIN user_organizations uo ON o.id = uo.organization_id
+       WHERE uo.user_id = ?`,
+      [user.id]
+    );
+
+    res.status(200).json({ success: true, 
+      data: user,
+      projects,
+      entries,
+      entryLinks,
+      organizations
+    });
+  } catch (error) {
+    console.error("Error fetching profile data: ", error);
+    res.status(500).json({ error: error });
+  }
+});
+
 // router.put('/change-password', authenticateToken(), [
 //   body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
 //   body('confirmPassword').custom((value, { req }) => {
@@ -115,70 +178,6 @@ router.get('/profile', authenticateToken(), async (req, res) => {
 //     res.status(500).json({ error: 'Internal server error' });
 //   }
 // });
-
-router.get("/creator/:username", async (req, res) => {
-  try {
-    const { username } = req.params;
-
-    if (!username || !username.trim()) {
-      return res.status(400).json({ error: "No username provided" });
-    }
-
-    const user = await db.getAsync(`
-      SELECT id, email, name, bio, portfolio_link, country, city, instagram_link, twitter_link, tiktok_link, youtube_link, username, state, created_at
-      FROM users WHERE username = ? 
-    `, [username.trim()]);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const userParticipations = await db.allAsync(`
-      SELECT contest_id, num_submissions, is_winner 
-      FROM contest_participation
-      WHERE user_id = ?
-    `, [user.id]);
-
-    const participationsWithContest = await Promise.all(
-      userParticipations.map(async (participation) => {
-        const contest = await db.getAsync(`
-          SELECT title, frontend_path 
-          FROM contests 
-          WHERE id = ?
-        `, [participation.contest_id]);
-        
-        return {
-          num_submissions: participation.num_submissions,
-          is_winner: participation.is_winner,
-          contest_title: contest?.title || 'Unknown Contest',
-          contest_path: contest?.frontend_path || '#'
-        };
-      })
-    );
-
-    res.status(200).json({ 
-      user: {
-        email: user.email,
-        name: user.name,
-        bio: user.bio,
-        portfolio_link: user.portfolio_link,
-        country: user.country,
-        city: user.city,
-        instagram_link: user.instagram_link,
-        twitter_link: user.twitter_link,
-        tiktok_link: user.tiktok_link,
-        youtube_link: user.youtube_link,
-        username: user.username,
-        state: user.state,
-        created_at: user.created_at
-      },
-      participations: participationsWithContest
-    });
-  } catch (error) {
-    console.error('Profile error: ', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 router.post("/updateProfile", async () => {
 

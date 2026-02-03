@@ -6,6 +6,20 @@ import multer from "multer";
 import * as pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import xlsx from "xlsx";
+import db from "../services/db.js";
+import { promisify } from "util";
+
+db.getAsync = promisify(db.get.bind(db));
+db.allAsync = promisify(db.all.bind(db));
+
+db.runAsync = (sql, params) => {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) return reject(err);
+      resolve({ lastID: this.lastID, changes: this.changes });
+    });
+  });
+};
 
 const router = express.Router();
 
@@ -37,14 +51,23 @@ const upload = multer({
   }
 });
 
-// Initialize Google Gemini with corrected model and higher token limit
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ 
   model: "gemini-2.5-flash",
   generationConfig: {
     temperature: 0.3,
     maxOutputTokens: 1024,
-  }
+  },
+  safetySettings: [
+    {
+      category: "HARM_CATEGORY_HARASSMENT",
+      threshold: "BLOCK_NONE",
+    },
+    {
+      category: "HARM_CATEGORY_HATE_SPEECH",
+      threshold: "BLOCK_NONE",
+    },
+  ]
 });
 
 router.post("/suggestions", authenticateToken(), async (req, res) => {
@@ -223,7 +246,6 @@ router.post("/analyze-files",
   async (req, res) => {
   try {
     const fileArr = req.files;
-    console.log("Received files: ", fileArr);
 
     if (!fileArr || fileArr.length === 0) {
       return res.status(404).json({ error: "No files attached!" });
@@ -237,7 +259,7 @@ router.post("/analyze-files",
       console.log(`Processing file: ${originalname}, type: ${mimetype}, size: ${size}`);
 
       try {
-        const aiResponse = await processFileAI(originalname, mimetype, buffer, size, res);
+        const aiResponse = await processFileAI(originalname, mimetype, buffer, size);
 
         if (aiResponse) {
           analysisResults[originalname] = {
@@ -289,7 +311,7 @@ router.post("/analyze-files",
   }
 });
 
-async function processFileAI(name, type, buffer, size, res) {
+async function processFileAI(name, type, buffer, size) {
   try {
     let parts = [];
     let extractedText = "";
@@ -376,7 +398,7 @@ and finish with the confidence as (low, medium, high) in your prompt, just one w
     }
 
     const result = await model.generateContent(parts);
-    const responseText = await result.response.text();
+    const responseText = result.response.text();
 
     return {
       analysis: {
@@ -389,10 +411,61 @@ and finish with the confidence as (low, medium, high) in your prompt, just one w
       insights: [`Analysis of ${name} completed.`],
     };
   } catch (error) {
-    console.error(`AI analysis failed for ${name}: Maybe unsupported file`);
-    
-    res.status(500).json({ error: error + name});
+    console.error(`AI analysis failed for ${name}: Maybe unsupported file`, error);
   }
 }
+
+router.get("/:id/analyze", authenticateToken(), async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
+    const entries = await db.allAsync(`SELECT * FROM memory_entries WHERE project_id = ?`, [projectId]);
+
+    if (!entries || entries.length === 0) {
+      return res.status(404).json({ error: "No entries found for this project" });
+    }
+
+    const entriesString = JSON.stringify(entries);
+
+    const prompt = `I will provide you with a list of entries from a 'memory_entries' database.
+    
+    ### Database Entries to Analyze:
+    ${entriesString}
+
+    ### Analysis Framework:
+    1. **The Narrative Thread:** How do these entries evolve over time? (e.g., did an 'experiment' lead to a 'decision'?)
+    2. **Thematic Connections:** Identify recurring themes or keywords across 'content' and 'tags'.
+    3. **Sentiment & Momentum:** Are projects gaining positive momentum or hitting roadblocks?
+    4. **Knowledge Silos:** Are specific departments focusing on certain types of memory while ignoring others?
+    5. **Anomalies:** Highlight entries that seem disconnected or status changes like 'lesson_learned'.
+
+    ### Output Format:
+    - **Executive Summary:** A 3-sentence overview.
+    - **Key Findings:** Bullet points for similarities and differences.
+    - **The "Missing Link":** What is NOT being recorded?
+    - **Actionable Recommendations:** Next steps based on these memories.
+    
+    Provide a highly detailed, long-form response for each section of the analysis framework`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const aiResponse = result.response.text();
+
+      console.log("Project analyzed as: ", aiResponse);
+
+      res.status(200).json({ success: aiResponse });
+    } catch (error) {
+      console.error("Error analyzing project!", error);
+      res.status(error.status).json({ error: error.statusText});
+    }
+  } catch (error) {
+    console.error("Error analyzing entries:", error);
+    res.status(500).json({ error: "Internal server error during analysis" });
+  }
+});
 
 export default router;

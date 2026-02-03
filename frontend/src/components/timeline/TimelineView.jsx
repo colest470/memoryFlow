@@ -2,22 +2,20 @@ import { useState, useMemo } from 'react';
 import { Clock, User, Tag, Link as LinkIcon, FolderOpen, AlertCircle, ChevronRight, CornerDownRight, Search, X } from 'lucide-react';
 
 export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
-  console.log('TimelineView received entries:', entries);
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedParentId, setSelectedParentId] = useState(null);
   
   const entryTypeColors = {
-    proposal: 'bg-blue-100 text-blue-800 border-blue-200',
-    report: 'bg-green-100 text-green-800 border-green-200',
-    meeting_note: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    insight: 'bg-purple-100 text-purple-800 border-purple-200',
-    decision: 'bg-red-100 text-red-800 border-red-200',
-    experiment: 'bg-orange-100 text-orange-800 border-orange-200',
-    outcome: 'bg-teal-100 text-teal-800 border-teal-200',
-    result: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    proposal: 'bg-orange-900/40 text-white border-orange-700',
+    report: 'bg-green-900/40 text-green-300 border-green-700',
+    meeting_note: 'bg-yellow-900/40 text-yellow-300 border-yellow-700',
+    insight: 'bg-purple-900/40 text-purple-300 border-purple-700',
+    decision: 'bg-red-900/40 text-red-300 border-red-700',
+    experiment: 'bg-orange-900/40 text-white border-orange-700',
+    outcome: 'bg-teal-900/40 text-teal-300 border-teal-700',
+    result: 'bg-cyan-900/40 text-cyan-300 border-cyan-700',
   };
-
+  
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
@@ -183,11 +181,11 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
   if (entries && typeof entries === 'object' && !Array.isArray(entries) && safeEntries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertCircle className="w-16 h-16 text-red-300 mb-4" />
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h3 className="text-lg font-semibold text-white mb-2">
           Invalid Data Format
         </h3>
-        <p className="text-slate-500 max-w-md mb-2">
+        <p className="text-white max-w-md mb-2">
           Expected an array of entries but received an object.
         </p>
       </div>
@@ -197,17 +195,17 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
   if (!safeEntries || safeEntries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <FolderOpen className="w-16 h-16 text-slate-300 mb-4" />
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">
+        <FolderOpen className="w-16 h-16 text-white mb-4" />
+        <h3 className="text-lg font-semibold text-white mb-2">
           No Entries Yet
         </h3>
-        <p className="text-slate-500 max-w-md mb-6">
+        <p className="text-white max-w-md mb-6">
           Start by creating the first entry for this project timeline.
         </p>
         {onAddRelated && (
           <button
             onClick={() => onAddRelated(null)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
           >
             <LinkIcon className="w-4 h-4" />
             Create First Entry
@@ -228,9 +226,11 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
         <div className={`flex gap-4 ${isChild ? 'ml-8' : ''}`}>
           {/* Number/Icon */}
           <div className="flex-shrink-0">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
-              isChild ? 'bg-green-600' : 'bg-blue-600'
-            } ${entry._highlight ? 'ring-2 ring-yellow-400' : ''}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+              isChild 
+                ? 'bg-green-600 text-white border border-green-400' 
+                : 'bg-orange-600 text-white border border-orange-400'
+            } ${entry._highlight ? 'ring-2 ring-orange-400' : ''}`}>
               {isChild ? (
                 <CornerDownRight className="w-5 h-5" />
               ) : (
@@ -240,39 +240,43 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
           </div>
 
           {/* Entry Content */}
-          <div className={`flex-1 bg-white rounded-lg border p-5 ${isChild ? 'border-l-4 border-l-green-400' : 'shadow-sm'}`}>
+          <div className={`flex-1 bg-gray-900 rounded-lg border border-gray-700 p-5 ${
+            isChild 
+              ? 'border-l-4 border-l-green-500 shadow-sm' 
+              : 'shadow-md hover:border-orange-700 transition-colors duration-200'
+          }`}>
             {/* Parent reference for children - now clickable */}
             {isChild && entry.parent && (
-              <div className="mb-2 text-sm text-slate-500">
+              <div className="mb-2 text-sm text-white">
                 <button
                   onClick={() => {
                     setSelectedParentId(entry.parent.id);
                     setSearchQuery('');
                   }}
-                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors"
+                  className="text-white hover:text-orange-200 hover:underline font-medium transition-colors"
                 >
                   {entry.parentLinkType === "followed_from" ? "Followed from: " : 
                    entry.parentLinkType === "related_to" ? "Related to: " : 
                    entry.parentLinkType === "built_upon" ? "Built upon: " : 
                    "Revised by: "}
                 </button>
-                <span className="font-medium"> {entry.parent.title}</span>
+                <span className="font-medium text-white"> {entry.parent.title}</span>
               </div>
             )}
             
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <h3
-                  className="text-lg font-semibold text-slate-900 mb-2 cursor-pointer hover:text-blue-600 transition-colors"
+                  className="text-lg font-semibold text-white mb-2 cursor-pointer hover:text-orange-100 transition-colors"
                   onClick={() => onSelectEntry && onSelectEntry(entry)}
                 >
                   {entry.title || 'Untitled Entry'}
                   {entry._highlight && (
-                    <span className="ml-2 inline-block w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                    <span className="ml-2 inline-block w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
                   )}
                 </h3>
 
-                <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+                <div className="flex flex-wrap gap-3 text-sm text-white">
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     {entry.created_at ? formatDate(entry.created_at) : 'No date'}
@@ -281,7 +285,9 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
                     <User className="w-4 h-4" />
                     {entry.author?.full_name || entry.author_name || 'Unknown Author'}
                     {(entry.author?.department || entry.author_department) && (
-                      ` · ${entry.author?.department || entry.author_department}`
+                      <span className="text-gray-400">
+                        {` · ${entry.author?.department || entry.author_department}`}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -289,7 +295,7 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
 
               {entry.entry_type && (
                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                  entryTypeColors[entry.entry_type] || 'bg-slate-100 text-slate-800 border-slate-200'
+                  entryTypeColors[entry.entry_type] || 'bg-gray-800 text-gray-300 border-gray-700'
                 }`}>
                   {entry.entry_type.replace('_', ' ')}
                 </span>
@@ -297,7 +303,7 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
             </div>
 
             {entry.content && (
-              <p className="text-slate-700 mb-4">
+              <p className="text-gray-300 mb-4">
                 {(() => {
                   if (typeof entry.content === 'string') {
                     if (entry.content.split(" ").length > 50) {
@@ -312,17 +318,17 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
 
             {entry.tags && (
               <div className="flex items-center gap-2 mb-4">
-                <Tag className="w-4 h-4 text-slate-400" />
+                <Tag className="w-4 h-4 text-white" />
                 <div className="flex flex-wrap gap-2">
                   {Array.isArray(entry.tags) ? (
                     entry.tags.map((tag, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs">
+                      <span key={idx} className="px-2 py-1 bg-orange-900/30 text-white border border-orange-800 rounded text-xs">
                         {tag}
                       </span>
                     ))
                   ) : typeof entry.tags === 'string' ? (
                     JSON.parse(entry.tags).map((tag, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs">
+                      <span key={idx} className="px-2 py-1 bg-orange-900/30 text-white border border-orange-800 rounded text-xs">
                         {tag}
                       </span>
                     ))
@@ -331,11 +337,11 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t">
+            <div className="flex items-center justify-between pt-3 border-t border-gray-800">
               {onAddRelated && (
                 <button
                   onClick={() => onAddRelated(entry)}
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+                  className="flex items-center gap-2 text-white hover:text-white font-medium text-sm transition-colors"
                 >
                   <LinkIcon className="w-4 h-4" />
                   Add Follow-up
@@ -354,13 +360,13 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
                   }}
                   className={`text-sm font-medium transition-colors ${
                     selectedParentId === entry.id 
-                      ? 'text-blue-700 bg-blue-50 px-3 py-1 rounded' 
-                      : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1 rounded'
+                      ? 'text-white bg-orange-900/30 px-3 py-1 rounded border border-orange-800' 
+                      : 'text-white hover:text-white hover:bg-orange-900/20 px-3 py-1 rounded'
                   }`}
                 >
                   {entry.children.length} {entry.children.length === 1 ? 'follow-up' : 'follow-ups'}
                   {selectedParentId === entry.id && (
-                    <span className="ml-1 text-blue-700">(selected)</span>
+                    <span className="ml-1 text-white">(selected)</span>
                   )}
                 </button>
               )}
@@ -381,15 +387,15 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
   return (
     <div className="space-y-6">
       {/* Search Bar */}
-      <div className="bg-white rounded-lg border p-4 shadow-sm">
+      <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white" />
           <input
             type="text"
             placeholder="Search entries by title, content, tags, or type..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            className="w-full pl-10 pr-10 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-orange-600 outline-none transition-all text-white placeholder-gray-500"
           />
           {(searchQuery || selectedParentId) && (
             <button
@@ -397,7 +403,7 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
                 setSearchQuery('');
                 setSelectedParentId(null);
               }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
@@ -406,22 +412,22 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
         
         {/* Active filters info */}
         {(searchQuery || selectedParentId) && (
-          <div className="mt-3 pt-3 border-t text-sm text-slate-600">
+          <div className="mt-3 pt-3 border-t border-gray-800 text-sm text-white">
             {searchQuery && (
-              <div>Searching for: <span className="font-medium">"{searchQuery}"</span></div>
+              <div>Searching for: <span className="font-medium text-white">"{searchQuery}"</span></div>
             )}
             {selectedParentId && (
               <div>
-                Showing: <span className="font-medium">{entryMap.get(selectedParentId)?.title || 'selected parent'}</span> and follow-ups
+                Showing: <span className="font-medium text-white">{entryMap.get(selectedParentId)?.title || 'selected parent'}</span> and follow-ups
                 <button
                   onClick={() => setSelectedParentId(null)}
-                  className="ml-2 text-blue-600 hover:text-blue-800 text-xs"
+                  className="ml-2 text-white hover:text-white text-xs"
                 >
                   (clear)
                 </button>
               </div>
             )}
-            <div className="mt-1">
+            <div className="mt-1 text-gray-300">
               Found {filteredRootEntries.length} {filteredRootEntries.length === 1 ? 'entry' : 'entries'}
             </div>
           </div>
@@ -433,12 +439,12 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
         {filteredRootEntries.length > 0 ? (
           filteredRootEntries.map((entry, index) => renderEntry(entry, false, index))
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-lg border">
-            <Search className="w-16 h-16 text-slate-300 mb-4" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-900 rounded-lg border border-gray-800">
+            <Search className="w-16 h-16 text-white mb-4" />
+            <h3 className="text-lg font-semibold text-white mb-2">
               No matching entries found
             </h3>
-            <p className="text-slate-500 max-w-md mb-4">
+            <p className="text-white max-w-md mb-4">
               {searchQuery 
                 ? `No entries found matching "${searchQuery}". Try different keywords.`
                 : 'No entries available with the current filters.'}
@@ -449,7 +455,7 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
                   setSearchQuery('');
                   setSelectedParentId(null);
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
               >
                 <X className="w-4 h-4" />
                 Clear Filters

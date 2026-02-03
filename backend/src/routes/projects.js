@@ -378,6 +378,13 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
 router.get("/:id/members", authenticateToken(), async (req, res) => {
   try {
     const { id: projectId } = req.params;
+
+    console.log("Fetching members for project:", projectId);
+
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
     const members = await db.allAsync(
       `SELECT p.id, p.full_name, p.email, up.role
        FROM profiles p
@@ -386,10 +393,11 @@ router.get("/:id/members", authenticateToken(), async (req, res) => {
       [projectId]
     );
 
-    res.json({ success: true, members });
+    res.json({ success: true, members: members || [] });
+
   } catch (error) {
     console.error('Error fetching project members:', error);
-    res.status(500).json({ error: 'Failed to fetch project members' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

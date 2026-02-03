@@ -21,9 +21,9 @@
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
-    "openai": "^6.15.0",
+    "openai": "^6.17.0",
     "pdf-parse": "^2.4.5",
-    "sqlite3": "^5.1.7",
+    "sqlite3": "^5.0.2",
     "util": "^0.12.5",
     "xlsx": "^0.18.5"
   }
