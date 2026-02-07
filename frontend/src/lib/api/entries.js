@@ -244,8 +244,6 @@ export const entriesAPI = {
       throw new Error(error.error || 'Failed to analyze project');
     }
 
-    console.log(response.json());
-
     return response.json();
   },
 

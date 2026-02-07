@@ -34,8 +34,6 @@ export default function ProjectView() {
         entriesAPI.getProjectTimeline(projectId),
       ]);
 
-      console.log("TimelineData: ", timelineData);
-
       setProject(projectData);
       setEntries(timelineData.entries);
     } catch (error) {
@@ -66,8 +64,6 @@ export default function ProjectView() {
     try {
       const result = await entriesAPI.analyzeProject(projectId);
       setAnalyzeResult(result);
-
-      console.log(result);
 
       setShowAnalysisModal(true);
     } catch (err) {
@@ -807,8 +803,12 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
 
             {/* Modal Content */}
             <div className="p-6 space-y-8">
+
+              {analyzeResult && (
+                <div className='bg-black color-white'>{analyzeResult}</div>
+              )}
               {/* Insights Section */}
-              {analyzeResult.insights && analyzeResult.insights.length > 0 && (
+              {/* {analyzeResult.insights && analyzeResult.insights.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <BarChart3 className="w-5 h-5 text-purple-500" />
@@ -825,10 +825,10 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Suggestions Section */}
-              {analyzeResult.suggestions && analyzeResult.suggestions.length > 0 && (
+              {/* {analyzeResult.suggestions && analyzeResult.suggestions.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <TrendingUp className="w-5 h-5 text-orange-500" />
@@ -861,10 +861,10 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Summary Stats */}
-              {analyzeResult.stats && (
+              {/* analyzeResult.stats && (
                 <div className="border-t border-orange-800 pt-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Analysis Summary</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -894,8 +894,8 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              )}*/}
+            </div> 
 
             {/* Modal Footer */}
             <div className="sticky bottom-0 bg-gray-900 border-t border-gray-800 p-6 flex justify-end gap-3">

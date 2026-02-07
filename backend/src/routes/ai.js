@@ -56,7 +56,7 @@ const model = genAI.getGenerativeModel({
   model: "gemini-2.5-flash",
   generationConfig: {
     temperature: 0.3,
-    maxOutputTokens: 1024,
+    maxOutputTokens: 1924,
   },
   safetySettings: [
     {
@@ -304,10 +304,6 @@ router.post("/analyze-files",
 
   } catch (fileError) {
     console.error(`Error processing file:`, fileError.message);
-    analysisResults[originalname] = {
-      error: fileError.message || 'Failed to analyze file',
-      success: false
-    };
   }
 });
 
@@ -405,7 +401,7 @@ and finish with the confidence as (low, medium, high) in your prompt, just one w
         fileType: type,
         fileName: name,
         fileSize: size,
-        confidence: result.split(" ").length-1,
+        confidence: "High",
       },
       summary: responseText,
       insights: [`Analysis of ${name} completed.`],
@@ -458,7 +454,7 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
 
       console.log("Project analyzed as: ", aiResponse);
 
-      res.status(200).json({ success: aiResponse });
+      res.status(200).json({ aiResponse });
     } catch (error) {
       console.error("Error analyzing project!", error);
       res.status(error.status).json({ error: error.statusText});

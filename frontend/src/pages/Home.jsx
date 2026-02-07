@@ -1,11 +1,9 @@
-// MemoryFlowAnimatedHome.jsx
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { TextPlugin } from 'gsap/TextPlugin';
 import { useNavigate } from 'react-router-dom';
 
-// Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
 const Home = () => {
@@ -213,7 +211,7 @@ const Home = () => {
     
     for (let i = 0; i < 50; i++) {
       const particle = document.createElement('div');
-      particle.className = 'absolute w-1 h-1 bg-cyan-400 rounded-full';
+      particle.className = 'absolute w-1 h-1 bg-amber-500 rounded-full';
       
       gsap.set(particle, {
         x: Math.random() * window.innerWidth,
@@ -249,40 +247,27 @@ const Home = () => {
       
       {/* Animated gradient background */}
       <div className="fixed inset-0 z-0 opacity-30">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-pink-900/20 animate-gradient-x" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 via-orange-900/10 to-red-900/20 animate-gradient-x" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
       </div>
 
       {/* Navigation */}
-      <nav className="fixed w-full z-50 px-6 py-4 backdrop-blur-lg bg-black/80 border-b border-cyan-500/20">
+      <nav className="fixed w-full z-50 px-6 py-4 backdrop-blur-lg bg-black/80 border-b border-amber-500/20">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div 
               ref={brainRef}
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/30"
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/30"
             >
               🧠
             </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
               MemoryFlow
             </span>
           </div>
           
-          <div className="hidden md:flex space-x-8">
-            {['Problem', 'Solution', 'Features', 'Team'].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="group relative px-3 py-2 text-gray-300 hover:text-white transition-colors"
-              >
-                {item}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-500 to-purple-500 group-hover:w-full transition-all duration-300" />
-              </a>
-            ))}
-          </div>
-          
-          <button className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-cyan-500/30 transition-all duration-300 hover:scale-105">
-            Request Demo
+          <button onClick={() => navigate("/dashboard")} className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-amber-500/30 transition-all duration-300 hover:scale-105">
+            Get started
           </button>
         </div>
       </nav>
@@ -290,8 +275,8 @@ const Home = () => {
       {/* Hero Section */}
       <section ref={heroRef} className="relative min-h-screen pt-32 px-6 flex items-center overflow-hidden">
         <div className="hero-bg absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
         
         <div className="max-w-7xl mx-auto relative z-10">
@@ -301,7 +286,7 @@ const Home = () => {
           >
             {splitText("Turning Knowledge")}
             <br />
-            <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x">
+            <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent animate-gradient-x">
               {splitText("Into Power")}
             </span>
           </h1>
@@ -310,9 +295,9 @@ const Home = () => {
             Empowering organizations to preserve, share, and apply institutional memory
           </p>
           
-          <div className="problem-statement relative p-8 border-l-4 border-pink-500 bg-gradient-to-r from-pink-900/10 to-transparent backdrop-blur-sm rounded-r-lg mb-10 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-pink-500/5 to-transparent animate-shimmer" />
-            <h3 className="text-2xl font-bold text-pink-400 mb-4 flex items-center">
+          <div className="problem-statement relative p-8 border-l-4 border-red-500 bg-gradient-to-r from-red-900/10 to-transparent backdrop-blur-sm rounded-r-lg mb-10 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/5 to-transparent animate-shimmer" />
+            <h3 className="text-2xl font-bold text-red-400 mb-4 flex items-center">
               <span className="mr-3">⚠️</span>
               The $31.5 Billion Silent Crisis
             </h3>
@@ -323,7 +308,7 @@ const Home = () => {
           </div>
           
           <div className="flex flex-wrap gap-6">
-            <button onClick={navigate("/dashboard")} className="cta-button px-8 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-cyan-500/30 transition-all duration-300 hover:scale-105 transform">
+            <button onClick={() => navigate("/dashboard")} className="cta-button px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-amber-500/30 transition-all duration-300 hover:scale-105 transform">
               Explore
             </button>
           </div>
@@ -331,10 +316,10 @@ const Home = () => {
       </section>
 
       {/* Flow Timeline */}
-      <section className="py-32 px-6" ref={flowPathRef}>
+      <section className="px-6 pt-32" ref={flowPathRef}>
         <div className="max-w-7xl mx-auto">
           <h2 className="text-5xl font-bold text-center mb-4">
-            <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
               How It Works
             </span>
           </h2>
@@ -354,9 +339,9 @@ const Home = () => {
               />
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#00ffff" />
-                  <stop offset="50%" stopColor="#ff00ff" />
-                  <stop offset="100%" stopColor="#00ffff" />
+                  <stop offset="0%" stopColor="#fbbf24" />
+                  <stop offset="50%" stopColor="#f97316" />
+                  <stop offset="100%" stopColor="#dc2626" />
                 </linearGradient>
               </defs>
             </svg>
@@ -371,14 +356,14 @@ const Home = () => {
                 <div
                   key={index}
                   ref={el => timelineCardsRef.current[index] = el}
-                  className="relative p-8 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-lg border border-cyan-500/30 rounded-2xl shadow-2xl hover:shadow-cyan-500/20 transition-shadow duration-300 group"
+                  className="relative p-8 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-lg border border-amber-500/30 rounded-2xl shadow-2xl hover:shadow-amber-500/20 transition-shadow duration-300 group"
                 >
-                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full flex items-center justify-center text-2xl shadow-lg">
+                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-2xl shadow-lg">
                     {step.icon}
                   </div>
                   <h3 className="text-2xl font-bold mt-8 mb-4 text-center">{step.title}</h3>
                   <p className="text-gray-400 text-center">{step.desc}</p>
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-amber-500/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               ))}
             </div>
@@ -390,7 +375,7 @@ const Home = () => {
       <section className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-5xl font-bold text-center mb-4">
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
               Core Features
             </span>
           </h2>
@@ -404,25 +389,44 @@ const Home = () => {
                 icon: '📅',
                 title: 'Memory Timeline',
                 desc: 'Visualize knowledge journey chronologically',
-                color: 'from-cyan-500 to-blue-500'
+                color: 'from-amber-500 to-orange-500',
+                items: [
+                  'Chronological knowledge mapping',
+                  'Historical context tracking',
+                  'Event-based memory views',
+                  'Evolution insights'
+                ]
               },
               {
                 icon: '🔎',
                 title: 'Smart Search',
                 desc: 'AI-powered semantic search with filters',
-                color: 'from-purple-500 to-pink-500'
+                color: 'from-orange-500 to-red-500',
+                items: [
+                  'Semantic AI search',
+                  'Advanced filtering',
+                  'Instant results',
+                  'Context-aware suggestions'
+                ]
               },
               {
                 icon: '📈',
                 title: 'Analytics Dashboard',
                 desc: 'Track knowledge health & engagement',
-                color: 'from-orange-500 to-red-500'
+                color: 'from-red-500 to-rose-500',
+                items: [
+                  'Engagement metrics',
+                  'Knowledge gaps detection',
+                  'Usage trends',
+                  'Performance insights'
+                ]
               }
-            ].map((feature, index) => (
+            ]
+            .map((feature, index) => (
               <div
                 key={index}
                 ref={el => featureCardsRef.current[index] = el}
-                className="relative p-8 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-lg border border-cyan-500/20 rounded-2xl shadow-2xl transform-gpu preserve-3d perspective-1000"
+                className="relative p-8 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-lg border border-amber-500/20 rounded-2xl shadow-2xl transform-gpu preserve-3d perspective-1000"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-20 rounded-2xl blur-xl`} />
                 <div className="relative z-10">
@@ -432,14 +436,9 @@ const Home = () => {
                   <h3 className="text-3xl font-bold mb-4">{feature.title}</h3>
                   <p className="text-gray-300 text-lg mb-6">{feature.desc}</p>
                   <ul className="space-y-2">
-                    {[
-                      'Real-time visualization',
-                      'Contextual connections',
-                      'Interactive filtering',
-                      'Collaborative annotations'
-                    ].map((item, i) => (
+                    {feature.items.map((item, i) => (
                       <li key={i} className="flex items-center text-gray-400">
-                        <span className="mr-2">✨</span>
+                        <span className="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>
                         {item}
                       </li>
                     ))}
@@ -451,35 +450,11 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { value: '31.5', suffix: 'B', label: 'Annual corporate loss from knowledge failure' },
-              { value: '25', suffix: 'B', label: 'Global knowledge management market' },
-              { value: '68', suffix: '%', label: 'Reduction in onboarding time with MemoryFlow' }
-            ].map((stat, index) => (
-              <div
-                key={index}
-                ref={el => statsRef.current[index] = el}
-                className="text-center p-8 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-lg border border-cyan-500/30 rounded-2xl"
-              >
-                <div className="text-6xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                  <span data-value={stat.value} data-suffix={stat.suffix}>0</span>{stat.suffix}
-                </div>
-                <p className="text-gray-400 mt-4 text-lg">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="py-32 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-5xl font-bold mb-8">
-            <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x">
+            <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent animate-gradient-x">
               Ready to Transform Your Organization?
             </span>
           </h2>
@@ -488,28 +463,27 @@ const Home = () => {
           </p>
           
           <div className="flex flex-col md:flex-row gap-6 justify-center">
-            <button className="group relative px-10 py-5 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-xl font-bold text-xl overflow-hidden">
-              <span className="relative z-10">🚀 Start Your Free Pilot</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <button onClick={() => navigate("/dashboard")} className="group relative px-10 py-5 bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl font-bold text-xl overflow-hidden">
+              <span className="relative z-10">Get Started</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
-            <button className="px-10 py-5 bg-transparent border-2 border-cyan-500 rounded-xl font-bold text-xl hover:bg-cyan-500/10 transition-all duration-300">
+            <a href="tel:+1234567890" className="px-10 py-5 bg-transparent border-2 border-amber-500 rounded-xl font-bold text-xl hover:bg-amber-500/10 transition-all duration-300">
               📞 Schedule a Call
-            </button>
+            </a>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-cyan-500/20">
+      <footer className="py-12 px-6 border-t border-amber-500/20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center text-gray-500">
-            <p>© 2024 MemoryFlow Enterprise. Turning knowledge into power.</p>
+            <p>© {new Date().getFullYear()} MemoryFlow Enterprise. Turning knowledge into power.</p>
             <p className="mt-2">Contact: Victor Wanyama • MemoryFlow Enterprise</p>
           </div>
         </div>
       </footer>
 
-      {/* Replace this at the bottom of your component */}
       <style>{`
         @keyframes gradient-x {
           0%, 100% { background-position: 0% 50%; }
@@ -548,8 +522,12 @@ const Home = () => {
         }
         
         ::-webkit-scrollbar-thumb {
-          background: linear-gradient(to bottom, #00ffff, #ff00ff);
+          background: linear-gradient(to bottom, #fbbf24, #f97316, #dc2626);
           border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #f59e0b, #ea580c, #b91c1c);
         }
       `}</style>
     </div>
