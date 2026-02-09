@@ -569,7 +569,6 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
               onClick={() => setActiveTab("timeline")}
               className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors font-medium text-white"
             >
-              <Plus className="w-4 h-4" />
               Entries
             </button>
             <button

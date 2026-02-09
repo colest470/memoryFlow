@@ -26,7 +26,8 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     department: '',
     metadata: {
       ai_suggestions: null,
-      attached_files: []
+      attached_files: [],
+      file_analysis: null
     },
     parent_entry_id: parentEntryId || null,
     link_type: 'followed_from'
@@ -41,6 +42,56 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     outcome: 'Results and outcomes of work',
     proposal: 'Suggestions or proposals for action',
     result: 'Final results or deliverables'
+  };
+
+  // Helper function to format AI analysis for content
+  const formatAIAnalysisForContent = (analysisData) => {
+    if (!analysisData) return '';
+
+    console.log("From formatAIAnalysisForContent: ", analysisData);
+    
+    let formattedContent = '';
+    
+    // Check if analysisData has the full response structure
+    const analysis = analysisData.analysis || analysisData;
+    
+    Object.entries(analysis).forEach(([filename, fileAnalysis]) => {
+      formattedContent += `Analysis: ${filename}\n`;
+      
+      // if (fileAnalysis?.summary) {
+      //   formattedContent += `**Summary:** ${fileAnalysis.summary}\n`;
+      // }
+      
+      if (fileAnalysis?.explanation) {
+        formattedContent += `\n**Explanation:** ${fileAnalysis.explanation}\n`;
+      }
+      
+      // Use key_points (from API) - NOT keyPoints
+      if (fileAnalysis?.key_points && fileAnalysis.key_points.length > 0) {
+        formattedContent += `\n**Key Points:**\n`;
+        fileAnalysis.key_points.forEach(point => {
+          formattedContent += `• ${point}\n`;
+        });
+      }
+      
+      // Use action_items (from API) - NOT actionItems
+      // if (fileAnalysis?.action_items && fileAnalysis.action_items.length > 0) {
+      //   formattedContent += `\n**Action Items:**\n`;
+      //   fileAnalysis.action_items.forEach(item => {
+      //     formattedContent += `✓ ${item}\n`;
+      //   });
+      // }
+      
+      // if (fileAnalysis?.category) {
+      //   formattedContent += `\n**Category:** ${fileAnalysis.category}\n`;
+      // }
+      
+      // if (fileAnalysis?.confidence) {
+      //   formattedContent += `**Confidence:** ${fileAnalysis.confidence}\n`;
+      // }
+    });
+    
+    return formattedContent.trim();
   };
 
   useEffect(() => {
@@ -206,26 +257,26 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
     }
   };
 
-  const addFileAnalysis = (data) => {
-    let combinedContent = '';
+  const addFileAnalysis = (analysisData) => {
+    if (!analysisData) return;
     
-    Object.entries(data || aiData?.analysis || {}).forEach(([filename, analysis]) => {
-      if (analysis?.summary) {
-        combinedContent += `\n\n📄 **${filename}**: ${analysis.summary}`;
-      }
-      if (analysis?.keyPoints && analysis.keyPoints.length > 0) {
-        combinedContent += '\n• ' + analysis.keyPoints.join('\n• ');
-      }
-    });
+    const formattedContent = formatAIAnalysisForContent(analysisData);
+
+    console.log("Formatted Content: 265", formattedContent);
     
-    if (combinedContent) {
+    if (formattedContent) {
       setFormData(prev => ({
         ...prev,
-        content: prev.content + (prev.content ? '\n\n' : '') + '## AI Analysis Results' + combinedContent,
+        content: prev.content + (prev.content ? '\n\n---\n\n' : '') + formattedContent,
         metadata: {
           ...prev.metadata,
-          file_analysis: data || aiData?.analysis || {}
+          file_analysis: analysisData
         }
+      }));
+      
+      setAIData(prev => ({
+        ...prev,
+        analysis: null
       }));
       
       setSuccessMessage('File analysis added to content!');
@@ -307,16 +358,18 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
       clearInterval(progressInterval);
 
-      if (!response.ok || (response.json()).insights.length) {
-        throw new Error('Failed to analyze files');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to analyze files: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
 
-      setAIData(data);
-      setAiDataFiles(prevData => [...prevData, data?.analysis]);
 
-      console.log('File analysis results:', aiDataFiles);
+      setAIData(data);
+
+      console.log('File analysis results:', data.analysis);
 
       setUploadedFiles(prev => prev.map(file => 
         filesToAnalyze.find(f => f.id === file.id) 
@@ -345,7 +398,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         const insightsText = data.insights.join('\n• ');
         setFormData(prev => ({
           ...prev,
-          content: prev.content + (prev.content ? '\n\n' : '') + `📎 File Analysis Insights:\n• ${insightsText}`
+          content: prev.content + (prev.content ? '\n\n' : '') + `### File Analysis Insights\n• ${insightsText}`
         }));
         setSuccessMessage('Files analyzed and insights added to content');
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -372,7 +425,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
           ? { ...file, status: 'error', progress: 0 }
           : file
       ));
-      setError(`Failed to analyze some files: ${err.error}`);
+      setError(`Failed to analyze some files: ${err.message || err.toString()}`);
       const fallbackInsights = filesToAnalyze.map(file => {
         const insights = [`File: ${file.name} (${formatFileSize(file.size)})`];
         if (file.type.includes('image/')) {
@@ -388,7 +441,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
       if (fallbackInsights.length > 0) {
         setFormData(prev => ({
           ...prev,
-          content: prev.content + (prev.content ? '\n\n' : '') + ` Files attached (${filesToAnalyze.length}):\n• ${fallbackInsights.join('\n• ')}`
+          content: prev.content + (prev.content ? '\n\n' : '') + `### Files attached (${filesToAnalyze.length})\n• ${fallbackInsights.join('\n• ')}`
         }));
         setSuccessMessage('Files attached with basic metadata');
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -599,7 +652,8 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         name: file.name,
         type: file.type,
         size: file.size,
-        analysis: formData.metadata.attached_files.find(f => f.id === file.id)?.analysis || null
+        analysis: formData.metadata.file_analysis?.[file.name] || // Check file_analysis first
+                formData.metadata.attached_files.find(f => f.id === file.id)?.analysis || null
       }));
 
       const payload = {
@@ -611,7 +665,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         department: formData.department,
         tags: formData.tags,
         metadata: {
-          ...(useAI ? formData.metadata : {}),
+          ...formData.metadata, // This includes file_analysis
           attached_files: fileData
         },
         parent_entry_id: formData.parent_entry_id,
@@ -887,100 +941,154 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                       </div>
                     ))}
                   </div>
-                    {useAI && aiData?.analysis && Object.keys(aiData.analysis).length > 0 && (
-                      <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
-                        <h3 className="text-lg font-semibold text-orange-300 mb-3">AI File Analysis Results</h3>
-                        <div className="space-y-4">
-                          {Object.entries(aiData.analysis).map(([filename, analysisData]) => (
-                            <div key={filename} className="p-3 bg-gray-900 rounded border border-gray-700">
-                              <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-medium text-gray-200">{filename}</h4>
-                                <span className="text-xs px-2 py-1 bg-orange-900/40 text-orange-300 rounded-full">
-                                  {analysisData?.confidence || 'medium'} confidence
-                                </span>
+
+                  {useAI && aiData?.analysis && Object.keys(aiData.analysis).length > 0 && (
+                    <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-orange-300">AI File Analysis Results</h3>
+                        <button
+                          type="button"
+                          onClick={() => addFileAnalysis(aiData.analysis)}
+                          className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center gap-2"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Add All to Content
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {Object.entries(aiData.analysis).map(([filename, analysisData]) => (
+                          <div key={filename} className="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                            <div className="flex justify-between items-center mb-3">
+                              <div>
+                                <h4 className="font-semibold text-gray-200 text-sm">{filename}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs text-gray-400">
+                                    {analysisData?.type || 'Unknown type'} • {analysisData?.size ? formatFileSize(analysisData.size) : 'Unknown size'}
+                                  </span>
+                                </div>
                               </div>
-                              
-                              {analysisData?.summary && (
-                                <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-300 mb-1">Summary:</label>
-                                  <textarea
-                                    value={analysisData.summary}
-                                    onChange={(e) => {
-                                      // Update the aiData with edited summary
-                                      setAIData(prev => ({
-                                        ...prev,
-                                        analysis: {
-                                          ...prev.analysis,
-                                          [filename]: {
-                                            ...prev.analysis[filename],
-                                            summary: e.target.value
-                                          }
-                                        }
-                                      }));
-                                    }}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm resize-y text-white"
-                                    rows="2"
-                                  />
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                analysisData?.confidence === 'high'
+                                  ? 'bg-green-900/40 text-green-300'
+                                  : analysisData?.confidence === 'medium'
+                                  ? 'bg-yellow-900/40 text-yellow-300'
+                                  : 'bg-red-900/40 text-red-300'
+                              }`}>
+                                {analysisData?.confidence || 'medium'} confidence
+                              </span>
+                            </div>
+                            
+                            {/* Summary Section */}
+                            {analysisData?.summary && (
+                              <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Summary:</label>
+                                <div className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white min-h-[60px] whitespace-pre-wrap">
+                                  {analysisData.summary}
                                 </div>
-                              )}
-                              
-                              {analysisData?.keyPoints && analysisData.keyPoints.length > 0 && (
-                                <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-300 mb-1">Key Points:</label>
-                                  <div className="space-y-1">
-                                    {analysisData.keyPoints.map((point, idx) => (
-                                      <div key={idx} className="flex items-start gap-2">
-                                        <span className="text-orange-500 mt-1">•</span>
-                                        <input
-                                          type="text"
-                                          value={point}
-                                          onChange={(e) => {
-                                            const updatedPoints = [...analysisData.keyPoints];
-                                            updatedPoints[idx] = e.target.value;
-                                            setAIData(prev => ({
-                                              ...prev,
-                                              analysis: {
-                                                ...prev.analysis,
-                                                [filename]: {
-                                                  ...prev.analysis[filename],
-                                                  keyPoints: updatedPoints
-                                                }
-                                              }
-                                            }));
-                                          }}
-                                          className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-white"
-                                        />
+                              </div>
+                            )}
+                            
+                            {/* Key Points Section */}
+                            {analysisData?.key_points && analysisData.key_points.length > 0 && (
+                              <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Key Points:</label>
+                                <div className="space-y-2">
+                                  {analysisData.key_points.map((point, idx) => (
+                                    <div key={idx} className="flex items-start gap-2">
+                                      {/* Custom Bullet Point */}
+                                      <span className="text-orange-500 mt-1 flex-shrink-0">•</span>
+                                      
+                                      {/* Read-only Point Display */}
+                                      <div className="flex-1 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-white whitespace-pre-wrap">
+                                        {point}
                                       </div>
-                                    ))}
-                                  </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Action Items Section */}
+                            {analysisData?.action_items && analysisData.action_items.length > 0 && (
+                              <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Suggested Actions:</label>
+                                <div className="space-y-1">
+                                  {analysisData.action_items.map((item, idx) => (
+                                    <div key={idx} className="flex items-start gap-2 text-sm text-gray-300">
+                                      <span className="text-green-500 mt-0.5">✓</span>
+                                      <span>{item}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Category and Explanation */}
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                              {analysisData?.category && (
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-400 mb-1">Category:</label>
+                                  <span className="text-sm text-gray-300">{analysisData.category}</span>
                                 </div>
                               )}
-                              
-                              {analysisData?.tags && analysisData.tags.length > 0 && (
-                                <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-300 mb-1">Suggested Tags:</label>
-                                  <div className="flex flex-wrap gap-1">
-                                    {analysisData.tags.map((tag, idx) => (
-                                      <span key={idx} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </div>
+                              {analysisData?.type && (
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-400 mb-1">File Type:</label>
+                                  <span className="text-sm text-gray-300">{analysisData.type}</span>
                                 </div>
                               )}
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 pt-3 border-t border-gray-700">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const singleFileAnalysis = { [filename]: analysisData };
+                                  
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    content: prev.content + (prev.content ? '\n\n' : '') + 
+                                             `## 📄 Analysis: ${filename}\n` +
+                                             `**Summary:** ${analysisData.summary || ''}\n` +
+                                             (analysisData.explanation ? `\n**Explanation:** ${analysisData.explanation}\n` : '') +
+                                             (analysisData.key_points?.length ? `\n**Key Points:**\n${analysisData.key_points.map(p => `• ${p}`).join('\n')}\n` : '') +
+                                             (analysisData.action_items?.length ? `\n**Action Items:**\n${analysisData.action_items.map(a => `✓ ${a}`).join('\n')}\n` : '')
+                                  }));
+                                  
+                                  setSuccessMessage(`Added ${filename} analysis to content!`);
+                                  setTimeout(() => setSuccessMessage(''), 3000);
+                                }}
+                                className="flex-1 px-3 py-2 bg-gray-800 text-orange-400 text-sm rounded hover:bg-gray-700 transition-colors border border-gray-700"
+                              >
+                                Add This File Only
+                              </button>
                               
                               <button
                                 type="button"
-                                onClick={() => addFileAnalysis(aiData.analysis)}
-                                className="mt-2 px-4 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition-colors"
+                                onClick={() => {
+                                  // Add just the summary and key points
+                                  const briefContent = `**${filename}**: ${analysisData.summary}\n• ${analysisData.key_points?.join('\n• ') || ''}`;
+                                  
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    content: prev.content + (prev.content ? '\n\n' : '') + briefContent
+                                  }));
+                                  
+                                  setSuccessMessage(`Added brief analysis for ${filename}!`);
+                                  setTimeout(() => setSuccessMessage(''), 3000);
+                                }}
+                                className="px-3 py-2 bg-gray-800 text-gray-400 text-sm rounded hover:bg-gray-700 transition-colors border border-gray-700"
                               >
-                                Add this content to entry
+                                Add Brief
                               </button>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1059,6 +1167,19 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
                 <span className="text-sm text-gray-400">
                   We'll analyze your content and suggest tags, summary, and more.
                 </span>
+              </div>
+            )}
+            
+            {useAI && aiData?.analysis && Object.keys(aiData.analysis).length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => addFileAnalysis(aiData.analysis)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-900/40 text-orange-300 text-sm rounded-lg hover:bg-orange-900/60 transition-colors border border-orange-700"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Integrate File Analysis
+                </button>
               </div>
             )}
             

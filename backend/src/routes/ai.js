@@ -80,7 +80,6 @@ router.post("/suggestions", authenticateToken(), async (req, res) => {
       });
     }
 
-    // Prepare the prompt for Gemini
     const prompt = `Analyze this knowledge entry and provide suggestions in valid JSON format.
       CONTEXT:
       You are a knowledge management assistant. Analyze content and provide structured suggestions.
@@ -242,173 +241,138 @@ router.get("/health", async (req, res) => {
 
 router.post("/analyze-files",
   authenticateToken(),
-  upload.array("files", 10), 
+  upload.array("files", 10),
   async (req, res) => {
-  try {
-    const fileArr = req.files;
+    try {
+      const fileArr = req.files;
 
-    if (!fileArr || fileArr.length === 0) {
-      return res.status(404).json({ error: "No files attached!" });
-    }
+      if (!fileArr || fileArr.length === 0) {
+        return res.status(400).json({ error: "No files attached!" });
+      }
 
-    const analysisResults = {};
-    const insights = [];
+      const analysisResults = {};
+      const allInsights = [];
 
-    for (const file of fileArr) {
-      const { originalname, mimetype, buffer, size } = file;
-      console.log(`Processing file: ${originalname}, type: ${mimetype}, size: ${size}`);
-
-      try {
-        const aiResponse = await processFileAI(originalname, mimetype, buffer, size);
-
-        if (aiResponse) {
+      const analysisPromises = fileArr.map(async (file) => {
+        const { originalname, mimetype, buffer, size } = file;
+        
+        try {
+          const aiResponse = await processFileAI(originalname, mimetype, buffer, size);
+          
           analysisResults[originalname] = {
             type: mimetype,
             size: size,
-            analysis: aiResponse.analysis || null,
-            summary: aiResponse.summary || null
+            ...aiResponse 
           };
 
-          if (aiResponse.insights && Array.isArray(aiResponse.insights)) {
-            insights.push(...aiResponse.insights);
+          if (aiResponse.key_points) {
+            allInsights.push(...aiResponse.key_points);
           }
-        } else {
+        } catch (fileError) {
+          console.error(`Error processing ${originalname}:`, fileError);
           analysisResults[originalname] = {
             type: mimetype,
             size: size,
-            error: 'No response from AI processor',
-            analysis: null
+            error: fileError.message,
+            suggestions: generateFallbackSuggestions(originalname, "Analysis failed", mimetype)
           };
         }
+      });
 
-        console.log(`AI response for ${originalname}:`, aiResponse);
-      } catch (fileError) {
-        console.error(`Error processing file ${originalname}:`, fileError.message || fileError);
-        analysisResults[originalname] = {
-          type: mimetype,
-          size: size,
-          error: fileError.message || 'Failed to analyze file',
-          analysis: null
-        };
+      await Promise.all(analysisPromises);
 
-        res.status(500).json({ error: fileError });
-      }
+      res.status(200).json({
+        success: true,
+        analysis: analysisResults,
+        insights: allInsights,
+        model: 'gemini-2.5-flash-file-mode'
+      });
+
+    } catch (globalError) {
+      console.error(`Critical file route error:`, globalError);
+      res.status(500).json({ error: "Internal server error during analysis" });
     }
-
-    res.status(200).json({
-      success: true,
-      analysis: analysisResults,
-      insights: insights,
-      message: `Analyzed ${fileArr.length} file(s)`
-    });
-
-  } catch (fileError) {
-    console.error(`Error processing file:`, fileError.message);
-  }
-});
-
+  });
 async function processFileAI(name, type, buffer, size) {
   try {
     let parts = [];
     let extractedText = "";
 
-    const basePrompt = `
-You are analyzing the file "${name}".
-
-Your task is to clearly explain what this file contains and what is happening inside it.
-
-Provide:
-- A brief high-level summary of the file’s purpose
-- A clear explanation of the main logic, structure, or workflow
-- Important components, functions, or sections and what each one does
-- Key insights, assumptions, or notable design decisions
-- Any potential issues, limitations, or improvements (if applicable)
-
-Write in clear, simple language suitable for someone who did not create the file.
-and finish with the confidence as (low, medium, high) in your prompt, just one word in the brackets
-`;
+    const jsonPrompt = `
+      Analyze the file "${name}" and provide details in valid JSON format.
+      CONTEXT: You are a technical file analyzer.
+      
+      RESPONSE FORMAT:
+      Return ONLY valid JSON with this exact structure:
+      {
+        "summary": "1-2 sentence high level purpose",
+        "explanation": "Clear explanation of logic/workflow",
+        "key_points": ["point 1", "point 2", "point 3"],
+        "category": "technical|business|process|team|other",
+        "action_items": ["Suggested improvement or next step"],
+        "confidence": "high|medium|low"
+      }
+      IMPORTANT: Do not include markdown code blocks or prose. Only the JSON object.`;
 
     if (type.startsWith("image/")) {
-      parts = [
-        { text: basePrompt },
-        {
-          inlineData: {
-            data: buffer.toString("base64"),
-            mimeType: type,
-          },
-        },
-      ];
-    }
-
-    else if (type === "application/pdf") {
+      parts = [{ text: jsonPrompt }, { inlineData: { data: buffer.toString("base64"), mimeType: type } }];
+    } else if (type === "application/pdf") {
       const pdfData = await pdfParse(buffer);
       extractedText = pdfData.text;
-    }
-
-    // 📘 WORD (.docx)
-    else if (
-      type ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
+    } else if (type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       const doc = await mammoth.extractRawText({ buffer });
       extractedText = doc.value;
-    }
-
-    // 📊 EXCEL
-    else if (
-      type ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    ) {
+    } else if (type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
       const workbook = xlsx.read(buffer, { type: "buffer" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       extractedText = xlsx.utils.sheet_to_csv(sheet);
-    }
-
-    // 🧠 CODE + TEXT FILES
-    else if (
-      type.startsWith("text/") ||
-      name.endsWith(".js") ||
-      name.endsWith(".ts") ||
-      name.endsWith(".json")
-    ) {
+    } else if (type.startsWith("text/") || name.match(/\.(js|ts|json|py|html|css)$/)) {
       extractedText = buffer.toString("utf-8");
-    }
-    else {
-      throw new Error("Unsupported file type for AI analysis");
-      // return {
-      //   analysis: null,
-      //   summary: null,
-      //   insights: [`${name}: Unsupported file type (${type})`],
-      // };
+    } else {
+      throw new Error(`Unsupported file type: ${type}`);
     }
 
     if (!parts.length && extractedText) {
-      const safeText = extractedText.slice(0, 12000);
-
-      parts = [
-        {
-          text: `${basePrompt}\n\nFile content:\n${safeText}`,
-        },
-      ];
+      parts = [{ text: `${jsonPrompt}\n\nFile Content:\n${extractedText.slice(0, 15000)}` }];
     }
+
     const result = await model.generateContent(parts);
-    const responseText = result.response.text();
+    const aiResponse = result.response.text();
+    
+    console.log(`Raw AI response for ${name}:`, aiResponse);
 
-    console.log(responseText);
+    try {
+      const cleanedResponse = aiResponse
+        .replace(/```json\s*/g, '')
+        .replace(/```\s*/g, '')
+        .trim();
+      
+      const suggestions = JSON.parse(cleanedResponse);
+      
+      return {
+        summary: suggestions.summary || "No summary available",
+        explanation: suggestions.explanation || "No explanation provided",
+        key_points: Array.isArray(suggestions.key_points) ? suggestions.key_points : [],
+        category: suggestions.category || "other",
+        action_items: suggestions.action_items || [],
+        confidence: suggestions.confidence || "medium"
+      };
 
-    return {
-      analysis: {
-        fileType: type,
-        fileName: name,
-        fileSize: size,
-        confidence: "High",
-      },
-      summary: responseText,
-      insights: [`Analysis of ${name} completed.`],
-    };
+    } catch (parseError) {
+      console.warn("JSON Parse failed for file, using text extraction fallback");
+      return {
+        summary: "Text extraction fallback",
+        explanation: aiResponse.slice(0, 500),
+        key_points: [name],
+        category: "other",
+        action_items: [],
+        confidence: "low",
+        note: "parsed_from_raw_text"
+      };
+    }
   } catch (error) {
     console.error(`AI analysis failed for ${name}:`, error.message);
-    throw error; 
+    throw error;
   }
 }
 
@@ -420,7 +384,10 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
       return res.status(400).json({ error: "Project ID is required" });
     }
 
-    const entries = await db.allAsync(`SELECT * FROM memory_entries WHERE project_id = ?`, [projectId]);
+    const entries = await db.allAsync(
+      `SELECT title, content, entry_type, tags, created_at FROM memory_entries WHERE project_id = ?`, 
+      [projectId]
+    );
 
     if (!entries || entries.length === 0) {
       return res.status(404).json({ error: "No entries found for this project" });
@@ -428,40 +395,67 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
 
     const entriesString = JSON.stringify(entries);
 
-    const prompt = `I will provide you with a list of entries from a 'memory_entries' database.
-    
-    ### Database Entries to Analyze:
-    ${entriesString}
+    const prompt = `
+      Analyze these database entries and provide a structured project health report in valid JSON format.
+      
+      DATASET:
+      ${entriesString}
 
-    ### Analysis Framework:
-    1. **The Narrative Thread:** How do these entries evolve over time? (e.g., did an 'experiment' lead to a 'decision'?)
-    2. **Thematic Connections:** Identify recurring themes or keywords across 'content' and 'tags'.
-    3. **Sentiment & Momentum:** Are projects gaining positive momentum or hitting roadblocks?
-    4. **Knowledge Silos:** Are specific departments focusing on certain types of memory while ignoring others?
-    5. **Anomalies:** Highlight entries that seem disconnected or status changes like 'lesson_learned'.
+      INSTRUCTIONS:
+      1. Narrative Thread: How do entries evolve over time?
+      2. Themes: Recurring keywords and topics.
+      3. Sentiment: Project momentum and roadblocks.
+      4. Knowledge Gaps: What is missing or ignored?
+      5. Actionable Recommendations: 3-5 specific next steps.
 
-    ### Output Format:
-    - **Executive Summary:** A 3-sentence overview.
-    - **Key Findings:** Bullet points for similarities and differences.
-    - **The "Missing Link":** What is NOT being recorded?
-    - **Actionable Recommendations:** Next steps based on these memories.
-    
-    Provide a highly detailed, long-form response for each section of the analysis framework`;
+      RESPONSE FORMAT (Strict JSON ONLY):
+      {
+        "executive_summary": "3-sentence overview",
+        "key_findings": ["Finding 1", "Finding 2"],
+        "narrative": "Detailed evolution analysis",
+        "sentiment_score": "positive|neutral|negative",
+        "missing_links": ["Gap 1", "Gap 2"],
+        "recommendations": ["Step 1", "Step 2"],
+        "confidence": "high|medium|low"
+      }
+      IMPORTANT: No markdown, no prose, only the JSON object.`;
 
     try {
       const result = await model.generateContent(prompt);
       const aiResponse = result.response.text();
 
-      console.log("Project analyzed as: ", aiResponse);
+      let analysis;
+      try {
+        const cleanedResponse = aiResponse
+          .replace(/```json\s*/g, '')
+          .replace(/```\s*/g, '')
+          .trim();
+        
+        analysis = JSON.parse(cleanedResponse);
+      } catch (parseError) {
+        console.error("Failed to parse project analysis JSON:", parseError);
+        analysis = {
+          executive_summary: "Analysis completed but returned in raw format.",
+          raw_text: aiResponse,
+          confidence: "low",
+          note: "text_fallback"
+        };
+      }
 
-      res.status(200).json({ aiResponse });
-    } catch (error) {
-      console.error("Error analyzing project!", error);
-      res.status(error.status).json({ error: error.statusText});
+      res.status(200).json({ 
+        success: true,
+        analysis,
+        entry_count: entries.length,
+        model: 'gemini-2.5-flash'
+      });
+
+    } catch (geminiError) {
+      console.error("Gemini service error:", geminiError);
+      res.status(502).json({ error: "AI service currently unavailable" });
     }
   } catch (error) {
-    console.error("Error analyzing entries:", error);
-    res.status(500).json({ error: "Internal server error during analysis" });
+    console.error("Critical Analysis Error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
