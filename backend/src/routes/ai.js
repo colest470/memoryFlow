@@ -8,9 +8,15 @@ import mammoth from "mammoth";
 import xlsx from "xlsx";
 import db from "../services/db.js";
 import { promisify } from "util";
+import fs from "fs/promises";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 
 db.getAsync = promisify(db.get.bind(db));
 db.allAsync = promisify(db.all.bind(db));
+
+const __filepath = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filepath);
 
 db.runAsync = (sql, params) => {
   return new Promise((resolve, reject) => {
@@ -252,9 +258,20 @@ router.post("/analyze-files",
 
       const analysisResults = {};
       const allInsights = [];
+      let originalname;
+      let mimetype;
+      let buffer;
+      let type;
+      let size;
 
       const analysisPromises = fileArr.map(async (file) => {
-        const { originalname, mimetype, buffer, size } = file;
+        originalname = file.originalname;
+        mimetype = file.mimetype;
+        buffer = file.buffer;
+        size = file.size;
+        type = file.mimetype;
+
+        console.log(mimetype, size, type);
         
         try {
           const aiResponse = await processFileAI(originalname, mimetype, buffer, size);
@@ -281,11 +298,28 @@ router.post("/analyze-files",
 
       await Promise.all(analysisPromises);
 
+      const uploadDir = path.join(__dirname, "../uploads/analyzed_files");
+      await fs.mkdir(uploadDir, { recursive: true });
+
+      const timestamp = Date.now();
+      const safeName = `${timestamp}-${originalname.replace(/\s+/g, '_')}`;
+      const filePath = path.join(uploadDir, safeName);
+
+      try {
+        await fs.writeFile(filePath, buffer);
+
+        console.log(`Successfully saved: ${safeName}`);
+      } catch (error) {
+        console.error(`Failed to write file ${originalname} to disk:`, error);
+        throw new Error(`File system error: ${error.message}`);
+      }
+
       res.status(200).json({
         success: true,
         analysis: analysisResults,
         insights: allInsights,
-        model: 'gemini-2.5-flash-file-mode'
+        filePath: filePath,
+        model: 'gemini-2.5-flash-file-mode',
       });
 
     } catch (globalError) {
@@ -293,6 +327,7 @@ router.post("/analyze-files",
       res.status(500).json({ error: "Internal server error during analysis" });
     }
   });
+
 async function processFileAI(name, type, buffer, size) {
   try {
     let parts = [];
@@ -423,6 +458,8 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
     try {
       const result = await model.generateContent(prompt);
       const aiResponse = result.response.text();
+
+      console.log(aiResponse);
 
       let analysis;
       try {

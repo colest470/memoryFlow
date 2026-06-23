@@ -57,7 +57,8 @@ router.post('/', authenticateToken(), async (req, res) => {
       tags = [],
       metadata = {},
       parent_entry_id,
-      link_type = 'followed_from'
+      link_type = 'followed_from',
+      file_path
     } = req.body;
 
     if (!title) {
@@ -74,8 +75,8 @@ router.post('/', authenticateToken(), async (req, res) => {
     // Insert the memory entry
     const result = await db.runAsync(
       `INSERT INTO memory_entries 
-      (title, content, entry_type, project_id, author_id, status, department, tags, metadata, created_at, updated_at, organization_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)`,
+      (title, content, entry_type, project_id, author_id, status, department, tags, metadata, created_at, updated_at, organization_id, file_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?, ?)`,
       [
         title,
         content || null,
@@ -86,7 +87,8 @@ router.post('/', authenticateToken(), async (req, res) => {
         user.department || null,
         JSON.stringify(tagsArray),
         JSON.stringify(metadata || {}),
-        org.organization_id
+        org.organization_id,
+        file_path
       ]
     );
 
@@ -123,7 +125,6 @@ router.post('/', authenticateToken(), async (req, res) => {
         );
       } catch (linkError) {
         console.warn('Failed to create timeline link:', linkError);
-        // Don't fail the entry creation if link fails
       }
     }
 

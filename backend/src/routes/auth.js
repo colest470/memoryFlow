@@ -154,9 +154,7 @@ router.post("/login", [
 
 router.post('/refresh', async (req, res) => {
   try {
-    console.log("Refresh ...");
     const { refreshToken } = req.cookies;
-    console.log(refreshToken, "143");
 
     if (!refreshToken) {
       return res.status(401).json({ error: 'Refresh token required' });
@@ -166,6 +164,12 @@ router.post('/refresh', async (req, res) => {
         'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime("now")',
         [refreshToken]
     );
+
+    const allTokenRecord = await db.getAsync(
+        'SELECT * FROM refresh_tokens',
+        [refreshToken]
+    );
+    console.log("Tokenrecord: ", allTokenRecord);
 
     if (!tokenRecord) {
       return res.status(401).json({ error: 'Invalid refresh token' });

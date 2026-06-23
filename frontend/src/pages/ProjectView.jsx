@@ -63,6 +63,7 @@ export default function ProjectView() {
     setAnalyzeLoading(true);
     try {
       const result = await entriesAPI.analyzeProject(projectId);
+      console.log(result);
       setAnalyzeResult(result);
 
       setShowAnalysisModal(true);
@@ -293,7 +294,7 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
                 </div>
               )}
 
-              {/* Attached Files */}
+              {/* Attached Files. */}
               {entry.metadata?.attached_files && Array.isArray(entry.metadata.attached_files) && entry.metadata.attached_files.length > 0 && (
                 <div className="bg-gray-900 rounded-lg border border-gray-700 p-5">
                   <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
@@ -803,97 +804,113 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
             {/* Modal Content */}
             <div className="p-6 space-y-8">
 
-              {analyzeResult && (
-                <div className='bg-black color-white'>{analyzeResult}</div>
-              )}
-              {/* Insights Section */}
-              {/* {analyzeResult.insights && analyzeResult.insights.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-5 h-5 text-purple-500" />
-                    <h3 className="text-lg font-semibold text-purple-300">Key Insights</h3>
-                  </div>
-                  <div className="space-y-3">
-                    {analyzeResult.insights.map((insight, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 bg-gradient-to-r from-purple-900/30 to-purple-950/30 border border-purple-800 rounded-lg"
-                      >
-                        <p className="text-purple-200">{insight}</p>
+              {/* Analysis Results Modal */}
+              {showAnalysisModal && analyzeResult && (
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                  <div className="bg-black border border-orange-900/50 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+                    
+                    {/* Modal Header - Orange Theme */}
+                    <div className="p-6 border-b border-orange-900/30 flex items-center justify-between bg-gradient-to-r from-orange-950/20 to-black">
+                      <div className="flex items-center gap-3">
+                        <Zap className="w-6 h-6 text-orange-500" />
+                        <div>
+                          <h2 className="text-2xl font-bold text-orange-50">Project Analysis</h2>
+                          <p className="text-sm text-orange-500/70 mt-1">
+                            {analyzeResult.entry_count} entries analyzed • {analyzeResult.model}
+                          </p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )} */}
+                      <button
+                        onClick={() => setShowAnalysisModal(false)}
+                        className="text-gray-500 hover:text-orange-500 p-2 rounded-lg transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
 
-              {/* Suggestions Section */}
-              {/* {analyzeResult.suggestions && analyzeResult.suggestions.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-5 h-5 text-orange-500" />
-                    <h3 className="text-lg font-semibold text-white">Timeline Suggestions</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {analyzeResult.suggestions.map((suggestion, idx) => (
-                      <div key={idx} className="border border-orange-800 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="font-semibold text-white">{suggestion.entry_a_title}</p>
-                            <p className="text-sm text-orange-400">↔ {suggestion.entry_b_title}</p>
+                    {/* Modal Content - Scrollable */}
+                    <div className="p-6 space-y-8 overflow-y-auto">
+                      
+                      {/* Executive Summary */}
+                      {analyzeResult.analysis?.executive_summary && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <BarChart3 className="w-4 h-4 text-orange-500" />
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-orange-500/80">Executive Summary</h3>
                           </div>
-                          <div className="bg-orange-900/40 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            {Math.round(suggestion.similarity * 100)}% match
+                          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+                            <p className="text-gray-200 leading-relaxed">{analyzeResult.analysis.executive_summary}</p>
                           </div>
                         </div>
-                        <p className="text-white text-sm">
-                          Reason: {suggestion.reason || 'Similar themes detected'}
-                        </p>
-                        <button
-                          onClick={() => {
-                            setShowAnalysisModal(false);
-                          }}
-                          className="mt-3 text-sm text-orange-400 hover:text-white font-medium"
-                        >
-                          Link these entries →
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )} */}
+                      )}
 
-              {/* Summary Stats */}
-              {/* analyzeResult.stats && (
-                <div className="border-t border-orange-800 pt-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Analysis Summary</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-900 rounded-lg p-4">
-                      <p className="text-orange-400 text-sm">Total Entries Analyzed</p>
-                      <p className="text-2xl font-bold text-white">
-                        {analyzeResult.stats.total_entries}
-                      </p>
+                      {/* Key Findings */}
+                      {analyzeResult.analysis?.key_findings && analyzeResult.analysis.key_findings.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp className="w-4 h-4 text-orange-500" />
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-orange-500/80">Key Findings</h3>
+                          </div>
+                          <div className="space-y-2">
+                            {analyzeResult.analysis.key_findings.map((finding, idx) => (
+                              <div key={idx} className="flex gap-3 p-3 bg-zinc-900/30 border border-zinc-800/50 rounded-lg">
+                                <span className="text-orange-500 font-bold">•</span>
+                                <p className="text-gray-300 text-sm">{finding}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommendations */}
+                      {analyzeResult.analysis?.recommendations && analyzeResult.analysis.recommendations.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Zap className="w-4 h-4 text-orange-500" />
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-orange-500/80">Recommendations</h3>
+                          </div>
+                          <div className="space-y-2">
+                            {analyzeResult.analysis.recommendations.map((rec, idx) => (
+                              <div key={idx} className="p-3 bg-orange-950/10 border border-orange-900/20 rounded-lg">
+                                <p className="text-orange-100/90 text-sm">{rec}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="bg-gray-900 rounded-lg p-4">
-                      <p className="text-orange-400 text-sm">Links Suggested</p>
-                      <p className="text-2xl font-bold text-white">
-                        {analyzeResult.suggestions?.length || 0}
-                      </p>
-                    </div>
-                    <div className="bg-gray-900 rounded-lg p-4">
-                      <p className="text-orange-400 text-sm">Unique Tags Found</p>
-                      <p className="text-2xl font-bold text-white">
-                        {analyzeResult.stats.unique_tags || 0}
-                      </p>
-                    </div>
-                    <div className="bg-gray-900 rounded-lg p-4">
-                      <p className="text-orange-400 text-sm">Analysis Time</p>
-                      <p className="text-2xl font-bold text-white">
-                        {analyzeResult.stats.analysis_time_ms || '~1000'}ms
-                      </p>
+
+                    {/* Modal Footer - With Download Functionality */}
+                    <div className="p-6 border-t border-zinc-800 bg-zinc-950/50 flex justify-end gap-3">
+                      <button
+                        onClick={() => {
+                          const content = `PROJECT ANALYSIS RESULTS\n\n` +
+                            `Executive Summary:\n${analyzeResult.analysis?.executive_summary || 'N/A'}\n\n` +
+                            `Key Findings:\n${analyzeResult.analysis?.key_findings?.join('\n') || 'N/A'}\n\n` +
+                            `Recommendations:\n${analyzeResult.analysis?.recommendations?.join('\n') || 'N/A'}`;
+                          
+                          const element = document.createElement("a");
+                          const file = new Blob([content], {type: 'text/plain'});
+                          element.href = URL.createObjectURL(file);
+                          element.download = "analysis-report.txt";
+                          document.body.appendChild(element);
+                          element.click();
+                        }}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Download .txt
+                      </button>
+                      <button
+                        onClick={() => setShowAnalysisModal(false)}
+                        className="px-4 py-2 text-gray-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors"
+                      >
+                        Close
+                      </button>
                     </div>
                   </div>
                 </div>
-              )}*/}
+              )}
             </div> 
 
             {/* Modal Footer */}

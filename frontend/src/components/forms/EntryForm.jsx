@@ -369,13 +369,15 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
 
       setAIData(data);
 
-      console.log('File analysis results:', data.analysis);
-
       setUploadedFiles(prev => prev.map(file => 
         filesToAnalyze.find(f => f.id === file.id) 
           ? { ...file, status: 'completed', progress: 100 }
           : file
       ));
+
+      setFormData(prev => ({...prev,
+        file_path: data.filePath
+      }));
 
       setFormData(prev => ({
         ...prev,
@@ -398,7 +400,7 @@ export default function EntryForm({ projectId, parentEntryId, onSubmit, onClose 
         const insightsText = data.insights.join('\n• ');
         setFormData(prev => ({
           ...prev,
-          content: prev.content + (prev.content ? '\n\n' : '') + `### File Analysis Insights\n• ${insightsText}`
+          content: prev.content + (prev.content ? '\n\n' : '') + `File Analysis Insights\n• ${insightsText}`
         }));
         setSuccessMessage('Files analyzed and insights added to content');
         setTimeout(() => setSuccessMessage(''), 3000);

@@ -31,13 +31,7 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
-
-          <Route path='/search' element={
-            <ProtectedRoute>
-              <SearchPage />
-            </ProtectedRoute>
-          } />
-
+          
           <Route path='/projects/:projectId' element={
             <ProtectedRoute>
               <ProjectView />
@@ -48,20 +42,8 @@ function App() {
             <ProtectedRoute>
               <SearchPage />
             </ProtectedRoute>
-          } />
+          }/>
 
-          <Route path='/projects/:projectId' element={
-            <ProtectedRoute>
-              <ProjectView />
-            </ProtectedRoute>
-          } />
-
-          <Route path='/search' element={
-            <ProtectedRoute>
-              <SearchPage />
-            </ProtectedRoute>
-          }
-          />
         </Routes>
       </Router>
     </AuthProvider>

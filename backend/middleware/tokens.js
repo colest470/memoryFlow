@@ -15,8 +15,8 @@ export const authenticateToken = () => {
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = await db.getAsync('SELECT * FROM profiles WHERE id = ?', [decoded.userId]);
 
+      const user = await db.getAsync('SELECT * FROM profiles WHERE id = ?', [decoded.userId]);
       
       if (!user) {
         return res.status(401).json({ error: 'User not found' });
@@ -34,7 +34,8 @@ export const authenticateToken = () => {
 };
 
 export const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '15m' });
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '3w' });
   const refreshToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '3w' });
+
   return { accessToken, refreshToken };
 };
