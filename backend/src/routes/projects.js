@@ -287,9 +287,8 @@ router.delete('/:id', authenticateToken(), async (req, res) => {
 router.post('/:id/analyze', authenticateToken(), async (req, res) => {
   try {
     const { id: projectId } = req.params;
-    const { analysisType } = req.body; // 'comprehensive', 'quick', 'thematic'
+    const { analysisType } = req.body;
 
-    // Verify project exists and user has access
     const project = await db.getAsync(`
       SELECT p.*, 
         (SELECT COUNT(*) FROM memory_entries WHERE project_id = p.id AND status = 'active') as entry_count
@@ -302,7 +301,6 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Get all entries with their existing embeddings/metadata
     const entries = await db.allAsync(`
       SELECT me.*, 
         json_extract(me.metadata, '$.topics') as existing_topics,
@@ -322,7 +320,7 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
     }
 
     let analysis;
-    
+
     switch (analysisType) {
       case 'quick':
         analysis = await quickAnalyzeProject(entries);
@@ -334,24 +332,8 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
         analysis = await comprehensiveAnalyzeProject(entries);
     }
 
-    // Save analysis results to project_analyses table
     await db.runAsync(`
-      INSERT INTO project_analyses (project_id, analysis_type, analysis_data, created_by)
-      VALUES (?, ?, ?, ?)`,
-      [projectId, analysisType, JSON.stringify(analysis), req.user.id]
-    );
-
-    // Update project metadata with latest analysis
-    await db.runAsync(`
-      UPDATE projects 
-      SET metadata = json_patch(COALESCE(metadata, '{}'), ?),
-          last_analyzed_at = datetime('now')
-      WHERE id = ?`,
-      [JSON.stringify({
-        last_analysis: analysisType,
-        last_analyzed: new Date().toISOString(),
-        key_themes: analysis.key_themes?.slice(0, 5)
-      }), projectId]
+      UPDATE TABLE projects SET metadata = ? WHERE id = ?`, [JSON.stringify(analysis)], id
     );
 
     res.json({
@@ -620,7 +602,62 @@ router.get('/:id/insights', authenticateToken(), async (req, res) => {
   }
 });
 
-// Helper functions
+router.get("/:id/analysis", authenticateToken(), async (req, res) => {
+  try {
+    const { id: projectId } = req.params; // Fix: extract id from params
+
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
+    // Option 1: If analysis is stored as a JSON field in the projects table
+    const project = await db.getAsync(
+      `SELECT id, title, metadata FROM projects WHERE id = ?`, 
+      [projectId]
+    );
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Parse metadata if it exists and contains analysis
+    let analysis = null;
+    if (project.metadata) {
+      try {
+        const metadata = typeof project.metadata === 'string' 
+          ? JSON.parse(project.metadata) 
+          : project.metadata;
+        analysis = metadata.analysis || null;
+      } catch (parseError) {
+        console.error("Error parsing metadata:", parseError);
+      }
+    }
+
+    // If you want to generate analysis on-the-fly instead of storing it
+    // You could call your AI service here
+    
+    res.status(200).json({
+      success: true,
+      projectId: projectId,
+      analysis: analysis || {
+        executive_summary: "No analysis available for this project yet.",
+        key_findings: [],
+        recommendations: [],
+        entry_count: 0,
+        model: "N/A",
+        generated_at: new Date().toISOString()
+      }
+    });
+
+  } catch(error) {
+    console.error("Error fetching project analysis:", error);
+    res.status(500).json({ 
+      success: false,
+      error: `Failed to fetch project analysis: ${error.message}` 
+    });
+  }
+});
+
 async function comprehensiveAnalyzeProject(entries) {
   const analysis = await AnalyzeProject(entries);
   

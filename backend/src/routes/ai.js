@@ -459,9 +459,8 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
       const result = await model.generateContent(prompt);
       const aiResponse = result.response.text();
 
-      console.log(aiResponse);
-
       let analysis;
+
       try {
         const cleanedResponse = aiResponse
           .replace(/```json\s*/g, '')
@@ -469,6 +468,10 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
           .trim();
         
         analysis = JSON.parse(cleanedResponse);
+
+        await db.runAsync(`
+          ALTER TABLE projects
+        `, [analysis]);
       } catch (parseError) {
         console.error("Failed to parse project analysis JSON:", parseError);
         analysis = {

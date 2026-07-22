@@ -1,3 +1,5 @@
 node_modules
 database.sqlite
 .env
+src/uploads
+test1.js
