@@ -81,15 +81,15 @@ export default function Dashboard() {
       <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-orange-500 to-black">
         <header className="top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-white">MemoryFlow</h1>
                 <p className="text-sm text-orange-100">
                   {user?.organization} {user?.department && `· ${user.department}`}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <div className="text-left sm:text-right">
                   <p className="text-sm font-medium text-white">{user?.full_name}</p>
                   <p className="text-xs text-orange-200 capitalize">{user?.role}</p>
                 </div>
@@ -113,8 +113,8 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+              <div className="flex flex-wrap gap-2 sm:gap-4">
                 <button
                   onClick={() => setActiveView('projects')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -137,7 +137,7 @@ export default function Dashboard() {
 
               <button
                 onClick={() => setShowProjectForm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors border border-orange-500"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors border border-orange-500 w-full sm:w-auto"
               >
                 <Plus className="w-5 h-5" />
                 New Project

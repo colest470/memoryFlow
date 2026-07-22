@@ -37,7 +37,7 @@ function Login() {
         bg-[radial-gradient(circle,rgba(255,100,0,1.0)_0%,transparent_70%)]" />
 
       <div className="w-full max-w-md">
-        <div className="bg-black rounded-2xl shadow-2xl p-8">
+        <div className="bg-black rounded-2xl shadow-2xl p-6 sm:p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-extrabold text-slate-900 mb-2 text-white">
               MemoryFlow

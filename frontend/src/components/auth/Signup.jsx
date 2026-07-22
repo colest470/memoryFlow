@@ -60,7 +60,7 @@ function SignUp() {
       <div className="absolute bottom-[-170px] left-[-200px] w-[400px] h-[400px] rounded-full 
         bg-[radial-gradient(circle,rgba(255,100,0,1.0)_0%,transparent_70%)]" />
       <div className="w-full max-w-2xl">
-        <div className="bg-black rounded-2xl shadow-2xl p-10">
+        <div className="bg-black rounded-2xl shadow-2xl p-6 sm:p-10">
           <div className="text-center mb-10">
             <h1 className="text-4xl font-extrabold text-white mb-3"> 
               MemoryFlow

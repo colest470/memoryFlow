@@ -128,9 +128,7 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
   };
 
   const safeEntries = getEntriesArray();
-  console.log('Safe entries array:', safeEntries);
   
-  // Organize entries hierarchically
   const { rootEntries, entryMap } = organizeEntries(safeEntries);
 
   // Filter entries based on search
@@ -142,7 +140,6 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
     const searchLower = searchQuery.toLowerCase();
     
     const filterTree = (entry) => {
-      // Check if entry matches search
       const matchesSearch = !searchQuery || 
         entry.title?.toLowerCase().includes(searchLower) ||
         entry.content?.toLowerCase().includes(searchLower) ||
@@ -376,7 +373,7 @@ export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {
 
         {/* Render Children */}
         {entry.children && entry.children.length > 0 && (
-          <div className="ml-8 mt-2">
+          <div className="ml-4 sm:ml-8 mt-2">
             {entry.children.map((child, childIndex) => renderEntry(child, true, childIndex))}
           </div>
         )}

@@ -252,8 +252,8 @@ const Home = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="fixed w-full z-50 px-6 py-4 backdrop-blur-lg bg-black/80 border-b border-amber-500/20">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+      <nav className="fixed w-full z-50 px-4 sm:px-6 lg:px-8 py-4 backdrop-blur-lg bg-black/80 border-b border-amber-500/20">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
             <div 
               ref={brainRef}
@@ -266,14 +266,14 @@ const Home = () => {
             </span>
           </div>
           
-          <button onClick={() => navigate("/dashboard")} className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-amber-500/30 transition-all duration-300 hover:scale-105">
+          <button onClick={() => navigate("/dashboard")} className="px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-amber-500/30 transition-all duration-300 hover:scale-105">
             Get started
           </button>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section ref={heroRef} className="relative min-h-screen pt-32 px-6 flex items-center overflow-hidden">
+      <section ref={heroRef} className="relative min-h-screen pt-24 sm:pt-32 px-4 sm:px-6 lg:px-8 flex items-center overflow-hidden">
         <div className="hero-bg absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -282,7 +282,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto relative z-10">
           <h1 
             ref={titleRef}
-            className="text-6xl md:text-8xl font-bold mb-6 leading-tight"
+            className="text-4xl sm:text-6xl md:text-8xl font-bold mb-6 leading-tight"
           >
             {splitText("Turning Knowledge")}
             <br />
@@ -291,11 +291,11 @@ const Home = () => {
             </span>
           </h1>
           
-          <p className="tagline text-2xl md:text-3xl text-gray-300 mb-10 max-w-3xl">
+          <p className="tagline text-lg sm:text-2xl md:text-3xl text-gray-300 mb-10 max-w-3xl">
             Empowering organizations to preserve, share, and apply institutional memory
           </p>
           
-          <div className="problem-statement relative p-8 border-l-4 border-red-500 bg-gradient-to-r from-red-900/10 to-transparent backdrop-blur-sm rounded-r-lg mb-10 overflow-hidden">
+          <div className="problem-statement relative p-6 sm:p-8 border-l-4 border-red-500 bg-gradient-to-r from-red-900/10 to-transparent backdrop-blur-sm rounded-r-lg mb-10 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/5 to-transparent animate-shimmer" />
             <h3 className="text-2xl font-bold text-red-400 mb-4 flex items-center">
               <span className="mr-3">⚠️</span>
@@ -316,9 +316,9 @@ const Home = () => {
       </section>
 
       {/* Flow Timeline */}
-      <section className="px-6 pt-32" ref={flowPathRef}>
+      <section className="px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32" ref={flowPathRef}>
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-5xl font-bold text-center mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-center mb-4">
             <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
               How It Works
             </span>
@@ -372,9 +372,9 @@ const Home = () => {
       </section>
 
       {/* Features */}
-      <section className="py-32 px-6">
+      <section className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-5xl font-bold text-center mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-center mb-4">
             <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
               Core Features
             </span>
@@ -451,9 +451,9 @@ const Home = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-32 px-6">
+      <section className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-5xl font-bold mb-8">
+          <h2 className="text-4xl sm:text-5xl font-bold mb-8">
             <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent animate-gradient-x">
               Ready to Transform Your Organization?
             </span>
@@ -462,7 +462,7 @@ const Home = () => {
             Join forward-thinking companies preserving their intellectual capital
           </p>
           
-          <div className="flex flex-col md:flex-row gap-6 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center">
             <button onClick={() => navigate("/dashboard")} className="group relative px-10 py-5 bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl font-bold text-xl overflow-hidden">
               <span className="relative z-10">Get Started</span>
               <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -475,7 +475,7 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-amber-500/20">
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-amber-500/20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center text-gray-500">
             <p>© {new Date().getFullYear()} MemoryFlow Enterprise. Turning knowledge into power.</p>

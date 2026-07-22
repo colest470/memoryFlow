@@ -30,7 +30,7 @@ export default function SearchBar({ onSearch, showFilters = true }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
           <input
@@ -45,7 +45,7 @@ export default function SearchBar({ onSearch, showFilters = true }) {
 
         <button
           onClick={handleSearch}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
           Search
         </button>
@@ -53,7 +53,7 @@ export default function SearchBar({ onSearch, showFilters = true }) {
         {showFilters && (
           <button
             onClick={() => setShowFilterPanel(!showFilterPanel)}
-            className="px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors relative"
+            className="w-full sm:w-auto px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors relative"
           >
             <Filter className="w-5 h-5 text-slate-600" />
             {activeFilterCount > 0 && (
