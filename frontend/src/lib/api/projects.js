@@ -219,12 +219,30 @@ export async function uploadfiles(projectId) {
     });
 
     if (!response.ok) {
-      throw new error("Failed to analyze the files", error)
+      throw new Error("Failed to analyze the files", error)
     }
 
     return await response.json()
   } catch (error) {
     console.error("Error uploading files!")
     throw error;
+  }
+}
+
+export async function getAnalysis(projectId) {
+  try {
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/analysis`, {
+      headers: getAuthHeader(),
+      credentials: "include",
+      method: "GET"
+    });
+
+    if (!response.ok) {
+      throw new Error("Error getting analysis!");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(error);
   }
 }

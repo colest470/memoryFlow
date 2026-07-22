@@ -5,6 +5,7 @@ import { entriesAPI } from '../lib/api/entries';
 import TimelineView from '../components/timeline/TimelineView';
 import EntryForm from '../components/forms/EntryForm';
 import ProjectMembers from '../components/projects/ProjectMembers';
+import Analysis from '../components/dashboard/Analysis';
 import { useParams, useNavigate } from 'react-router-dom';
 import { X, Calendar, User, Tag, Link as LinkIcon, MessageSquare, Download, Copy } from 'lucide-react';
 
@@ -20,7 +21,8 @@ export default function ProjectView() {
   const [analyzeResult, setAnalyzeResult] = useState(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showEntryModal, setShowEntryModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('timeline'); // 'timeline', 'analytics', 'team'
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [activeTab, setActiveTab] = useState('timeline'); // 'timeline', 'analytics', 'team', 'analysis'
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -636,12 +638,23 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
                     </>
                   )} 
                   
-                  {activeTab === 'analytics' && (
-                    <>
-                      <h2 className="text-xl font-semibold text-white mb-6">Project Analytics</h2>
-                      <p className="text-orange-400">Analytics view is under construction.</p>
-                    </>
-                  )} 
+                  {activeTab === "analytics" && (
+                    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+                      <div className="bg-black border border-orange-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+                        <div className="flex justify-between items-center mb-4">
+                          <h2 className="text-2xl font-bold text-white">Analysis</h2>
+                          <button
+                            onClick={() => setShowAnalysis(false)}
+                            className="text-gray-400 hover:text-white"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <Analysis projectId={projectId} />
+                      </div>
+                    </div>
+                  )}
+
                   {(!['timeline', 'analytics'].includes(activeTab)) && (
                     <>
                       <h2 className="text-xl font-semibold text-white mb-6">Project Team</h2>
