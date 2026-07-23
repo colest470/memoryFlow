@@ -14,7 +14,7 @@ import aiRoutes from "./src/routes/ai.js"
 
 const app = express();
 
-const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+const frontendUrl = process.env.CLIENT_URL;
 const PORT = process.env.PORT || 4000;
 
 app.use(helmet({
