@@ -21,13 +21,47 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+const allowedOrigins = [frontendUrl];
+
 app.use(cors({
-  origin: frontendUrl,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy does not allow access from origin ${origin}`));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range'],
-  exposedHeaders: ['Content-Range', 'Accept-Ranges'], 
+  exposedHeaders: ['Content-Range', 'Accept-Ranges'],
+  optionsSuccessStatus: 204,
 }));
+
+app.options('*', cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy does not allow access from origin ${origin}`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range'],
+  optionsSuccessStatus: 204,
+}));
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', frontendUrl);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,Range');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -57,7 +91,6 @@ app.use((req, res, next) => {
 
 app.use(cookieParser());
 
-app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authLimiter, authRoutes);
