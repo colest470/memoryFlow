@@ -14,7 +14,7 @@ import aiRoutes from "./src/routes/ai.js"
 
 const app = express();
 
-const frontendUrl = process.env.CLIENT_URL;
+const frontendUrl = "https://memory-flow-owej.vercel.app";
 const PORT = process.env.PORT || 4000;
 
 app.use(helmet({
