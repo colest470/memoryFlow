@@ -17,57 +17,54 @@ const app = express();
 const frontendUrl = "https://memory-flow-owej.vercel.app";
 const PORT = process.env.PORT || 4000;
 
+// Configure CORS first - before any other middleware
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    if (frontendUrl === origin) {
+      callback(null, true);
+    } else {
+      console.log(`Blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range', 'Accept'],
+  exposedHeaders: ['Content-Range', 'Accept-Ranges'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
+// Apply CORS globally
+app.use(cors(corsOptions));
+
+// Handle OPTIONS preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+// Now apply other middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-const allowedOrigins = [frontendUrl];
+// Cookie parser
+app.use(cookieParser());
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy does not allow access from origin ${origin}`));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range'],
-  exposedHeaders: ['Content-Range', 'Accept-Ranges'],
-  optionsSuccessStatus: 204,
-}));
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.options('*', cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy does not allow access from origin ${origin}`));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range'],
-  optionsSuccessStatus: 204,
-}));
-
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', frontendUrl);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,Range');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
+// Logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Origin:', req.headers.origin);
   next();
 });
 
+// Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -81,35 +78,31 @@ const authLimiter = rateLimit({
   }
 });
 
-app.use((req, res, next) => {
-  if (req.is('multipart/form-data')) {
-    next();
-  } else {
-    express.json({ limit: '10mb' })(req, res, next);
-  }
-});
-
-app.use(cookieParser());
-
-app.use(express.urlencoded({ extended: true }));
-
+// Routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/entries", entriesRoutes);
 app.use("/api/ai", aiRoutes);
 
+// Health check
 app.get('/api/health', (req, res) => {
-	res.json({ status: 'ok' });
+  res.json({ status: 'ok' });
 });
 
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
+  
+  // Handle CORS errors specifically
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ 
+      error: 'CORS policy does not allow access from this origin' 
+    });
+  }
+  
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// app.listen(PORT, () => {
-// 	console.log(`Server listening on http://localhost:${PORT}`);
-// });
-
+// Export for Vercel
 export default app;
