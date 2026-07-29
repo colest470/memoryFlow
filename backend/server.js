@@ -15,8 +15,8 @@ import aiRoutes from "./src/routes/ai.js"
 const app = express();
 
 const allowedOrigins = [
-  'https://memory-flow-owej.vercel.app',
-  'https://memory-flow-sigma.vercel.app',
+  'https://memory-flow-owej.vercel.app/',
+  'https://memory-flow-sigma.vercel.app/',
 ];
 const PORT = process.env.PORT || 4000;
 
