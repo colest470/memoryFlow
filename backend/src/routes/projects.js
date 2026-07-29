@@ -195,11 +195,6 @@ router.get('/:id', authenticateToken(), async (req, res) => {
   }
 });
 
-/**
- * UPDATE PROJECT
- * PUT /api/projects/:id
- * Updates project details (owner only)
- */
 router.put('/:id', authenticateToken(), async (req, res) => {
   try {
     const { id } = req.params;

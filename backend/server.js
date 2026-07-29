@@ -17,10 +17,8 @@ const app = express();
 const frontendUrl = "https://memory-flow-owej.vercel.app";
 const PORT = process.env.PORT || 4000;
 
-// Configure CORS first - before any other middleware
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     // Check if origin is allowed
@@ -35,36 +33,29 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range', 'Accept'],
   exposedHeaders: ['Content-Range', 'Accept-Ranges'],
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+  optionsSuccessStatus: 200
 };
 
-// Apply CORS globally
 app.use(cors(corsOptions));
 
-// Handle OPTIONS preflight requests explicitly
 app.options('*', cors(corsOptions));
 
-// Now apply other middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Cookie parser
 app.use(cookieParser());
 
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   console.log('Origin:', req.headers.origin);
   next();
 });
 
-// Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -78,14 +69,12 @@ const authLimiter = rateLimit({
   }
 });
 
-// Routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/entries", entriesRoutes);
 app.use("/api/ai", aiRoutes);
 
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });

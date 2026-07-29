@@ -130,8 +130,8 @@ router.post("/login", [
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
       maxAge: 3 * 7 * 24 * 60 * 60 * 1000 
     });
 
@@ -191,8 +191,8 @@ router.post('/refresh', async (req, res) => {
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production' || true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
       maxAge: 3 * 7 * 24 * 60 * 60 * 1000
     });
 
