@@ -14,26 +14,29 @@ import aiRoutes from "./src/routes/ai.js"
 
 const app = express();
 
-const frontendUrl = "https://memory-flow-owej.vercel.app";
+const allowedOrigins = [
+  'https://memory-flow-owej.vercel.app',
+  'https://memory-flow-sigma.vercel.app',
+];
 const PORT = process.env.PORT || 4000;
 
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    
-    // Check if origin is allowed
-    if (frontendUrl === origin) {
-      callback(null, true);
-    } else {
-      console.log(`Blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
+
+    console.log(`Blocked origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range', 'Accept', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'Accept-Ranges'],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
 
 app.use(cors(corsOptions));
