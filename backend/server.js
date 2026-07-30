@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import multer from 'multer';
 
 import authRoutes from "./src/routes/auth.js";
 import userRoutes from "./src/routes/user.js";
@@ -13,33 +12,23 @@ import entriesRoutes from "./src/routes/entries.js";
 import aiRoutes from "./src/routes/ai.js"
 
 const app = express();
-
-const allowedOrigins = ["/*"];
 const PORT = process.env.PORT || 4000;
 
+// --- CORS CONFIGURATION (Fully permissive for Vercel) ---
+// We allow all origins and methods. Vercel's own proxy handles the main security.
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    console.log(`Blocked origin: ${origin}`);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
+  origin: true, // Allow any origin
+  credentials: true, // Allow cookies/auth headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range', 'Accept', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'Accept-Ranges'],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
 
-app.options('*', cors(corsOptions));
-
+// --- SECURITY MIDDLEWARE ---
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -47,17 +36,20 @@ app.use(helmet({
 
 app.use(cookieParser());
 
+// --- BODY PARSERS ---
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// --- LOGGING MIDDLEWARE (Optional, keep for debugging) ---
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   console.log('Origin:', req.headers.origin);
   next();
 });
 
+// --- RATE LIMITING ---
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   message: { error: 'Too many authentication attempts, try again later' },
   standardHeaders: true,
@@ -79,19 +71,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  
-  // Handle CORS errors specifically
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ 
-      error: 'CORS policy does not allow access from this origin' 
-    });
-  }
-  
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Export for Vercel
 export default app;
