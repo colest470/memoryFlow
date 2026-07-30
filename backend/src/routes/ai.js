@@ -409,7 +409,7 @@ async function processFileAI(name, type, buffer, size) {
     console.error(`AI analysis failed for ${name}:`, error.message);
     throw error;
   }
-}
+} // this is the final edit
 
 router.get("/:id/analyze", authenticateToken(), async (req, res) => {
   try {
