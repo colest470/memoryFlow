@@ -1,13 +1,8 @@
 {
-  "functions": {
-    "backend/api/*.js": {
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/backend/api/$1"
+      "destination": "/backend/server.js"
     },
     {
       "source": "/(.*)",
@@ -16,7 +11,7 @@
   ],
   "builds": [
     {
-      "src": "backend/api/*.js",
+      "src": "backend/server.js",
       "use": "@vercel/node"
     },
     {
