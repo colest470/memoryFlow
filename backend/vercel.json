@@ -1,15 +1,27 @@
 {
-  "version": 2,
-  "builds": [
+  "functions": {
+    "backend/api/*.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
     {
-      "src": "./server.js",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/backend/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
     }
   ],
-  "routes": [
+  "builds": [
     {
-      "src": "/(.*)",
-      "dest": "/"
+      "src": "backend/api/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static-build"
     }
   ]
 }
