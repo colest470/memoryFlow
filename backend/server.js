@@ -26,7 +26,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
 
 // --- SECURITY MIDDLEWARE ---
 app.use(helmet({
@@ -74,6 +73,10 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`App is listening on port: ${PORT}`);
 });
 
 export default app;

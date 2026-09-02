@@ -34,7 +34,7 @@ export const authenticateToken = () => {
 };
 
 export const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '3w' });
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '15m' });
   const refreshToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '3w' });
 
   return { accessToken, refreshToken };

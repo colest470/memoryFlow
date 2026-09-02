@@ -69,11 +69,6 @@ router.post('/', authenticateToken(), async (req, res) => {
   }
 });
 
-/**
- * GET PROJECTS
- * GET /api/projects
- * Returns all projects for the authenticated user's organization
- */
 router.get('/', authenticateToken(), async (req, res) => {
   try {
     console.log('User ID from token:', req.user.id); // Debug log

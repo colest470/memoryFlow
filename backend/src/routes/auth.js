@@ -131,8 +131,8 @@ router.post("/login", [
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
-      maxAge: 3 * 7 * 24 * 60 * 60 * 1000 
+      sameSite: 'lax',
+      maxAge: 3 * 7 * 24 * 60 * 60 * 1000 // tells the browser when to delete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
     });
 
     res.json({
@@ -175,30 +175,25 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
 
-    console.log("Tokenrecord: ", tokenRecord);
-
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(tokenRecord.user_id);
-
-    console.log(refreshToken, "70");
+    const { accessToken, refreshedToken } = generateTokens(tokenRecord.user_id);
 
     await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
 
     const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
+
     await db.runAsync(
     'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
-    [newRefreshToken, tokenRecord.user_id, expiresAt]
+    [refreshedToken, tokenRecord.user_id, expiresAt]
     );
 
-    res.cookie('refreshToken', newRefreshToken, {
+    res.cookie('refreshToken', refreshedToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 3 * 7 * 24 * 60 * 60 * 1000
     });
 
     const user = await db.getAsync('SELECT * FROM profiles WHERE id = ?', [tokenRecord.user_id]);
-
-    console.log(user);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
