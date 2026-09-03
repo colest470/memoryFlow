@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import bycrypt from "bcryptjs"
 import db from "../services/db.js";
 import { body, validationResult } from 'express-validator';
-import { generateTokens, authenticateToken } from "../../middleware/tokens.js";
+import { generateTokens, authenticateToken, verifyRefreshToken, verifyAccessToken } from "../../middleware/tokens.js";
 
 db.getAsync = promisify(db.get.bind(db));
 db.allAsync = promisify(db.all.bind(db));
@@ -25,7 +25,6 @@ router.post("/register", [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
-
   body('confirmPassword').custom((value, { req }) => {
     if (value !== req.body.password) {
       throw new Error('Passwords do not match');
@@ -112,8 +111,6 @@ router.post("/login", [
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    console.log(`User: ${user.email}`);
-
     const isValidPassword = await bycrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -123,10 +120,10 @@ router.post("/login", [
 
     const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
 
-    await db.runAsync(
-    'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
-    [refreshToken, user.id, expiresAt]
-    );
+    // await db.runAsync(
+    // 'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
+    // [refreshToken, user.id, expiresAt]
+    // );
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
@@ -154,55 +151,58 @@ router.post("/login", [
 
 router.post('/refresh', async (req, res) => {
   try {
-    const { refreshToken } = req.cookies;
+    const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({ error: 'Refresh token required' });
     }
 
-    const tokenRecord = await db.getAsync(
-        'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime("now")',
-        [refreshToken]
-    );
+    // const tokenRecord = await db.getAsync(
+    //     'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime("now")',
+    //     [refreshToken]
+    // );
 
-    const allTokenRecord = await db.getAsync(
-        'SELECT * FROM refresh_tokens',
-        [refreshToken]
-    );
-    console.log("Tokenrecord: ", allTokenRecord);
+    // const allTokenRecord = await db.getAsync(
+    //     'SELECT * FROM refresh_tokens',
+    //     [refreshToken]
+    // );
+    // console.log("Tokenrecord: ", allTokenRecord);
 
-    if (!tokenRecord) {
-      return res.status(401).json({ error: 'Invalid refresh token' });
+    // if (!tokenRecord) {
+    //   return res.status(401).json({ error: 'Invalid refresh token' });
+    // }
+
+    let isRefreshOk = verifyRefreshToken(refreshToken);
+
+    if (refreshToken) {
+      res.status(401).json({ error: "Refresh token invalid" });
     }
 
-    console.log("Tokenrecord: ", tokenRecord);
+    const user = await db.getAsync(`SELECT * FROM users WHERE id = ?`, [isRefreshOk.user_id])
 
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(tokenRecord.user_id);
+    if (!user) {
+      return res.status(403).json({ 
+        error: 'User not found',
+        code: 'USER_INACTIVE'
+      });
+    }
 
-    console.log(refreshToken, "70");
+    const { accessToken, refreshedToken } = generateTokens(tokenRecord.user_id);
 
-    await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
+    // await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
 
-    const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
-    await db.runAsync(
-    'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
-    [newRefreshToken, tokenRecord.user_id, expiresAt]
-    );
+    // const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
+    // await db.runAsync(
+    // 'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
+    // [refreshedToken, tokenRecord.user_id, expiresAt]
+    // );
 
-    res.cookie('refreshToken', newRefreshToken, {
+    res.cookie('refreshToken', refreshedToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'none',
       maxAge: 3 * 7 * 24 * 60 * 60 * 1000
     });
-
-    const user = await db.getAsync('SELECT * FROM profiles WHERE id = ?', [tokenRecord.user_id]);
-
-    console.log(user);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     res.json({
       accessToken,
@@ -221,7 +221,6 @@ router.post('/refresh', async (req, res) => {
 
 router.post('/logout', authenticateToken(), async (req, res) => {
   try {
-    console.log("User logging out ...");
     const { refreshToken } = req.cookies;
     const { devices } = req.body;
 
@@ -235,7 +234,13 @@ router.post('/logout', authenticateToken(), async (req, res) => {
       await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
     }
 
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/api/refresh'
+    });
+
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);

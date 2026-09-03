@@ -88,6 +88,7 @@ router.get('/', authenticateToken(), async (req, res) => {
 
     if (!user) {
       console.error('User organization not found for user ID:', req.user.id);
+      
       return res.status(404).json({ 
         error: 'Organization not found or user not assigned to any organization' 
       });

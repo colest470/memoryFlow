@@ -12,44 +12,41 @@ import entriesRoutes from "./src/routes/entries.js";
 import aiRoutes from "./src/routes/ai.js"
 
 const app = express();
-const PORT = process.env.PORT || 4000;
-
-// --- CORS CONFIGURATION (Fully permissive for Vercel) ---
-// We allow all origins and methods. Vercel's own proxy handles the main security.
-const corsOptions = {
-  origin: true, // Allow any origin
-  credentials: true, // Allow cookies/auth headers
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Range', 'Accept', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'Accept-Ranges'],
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
-
-// --- SECURITY MIDDLEWARE ---
-app.use(helmet({
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+const PORT = process.env.PORT || 8808;
 
 app.use(cookieParser());
 
-// --- BODY PARSERS ---
+app.use(helmet());
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || FRONTEND_URL).split(',');
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // allow requests with no origin like mobile apps or curl
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS policy: Origin not allowed'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// --- LOGGING MIDDLEWARE (Optional, keep for debugging) ---
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Origin:', req.headers.origin);
   next();
 });
 
-// --- RATE LIMITING ---
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: 'Too many authentication attempts, try again later' },
   standardHeaders: true,
@@ -77,3 +74,9 @@ app.use((err, req, res, next) => {
 });
 
 export default app;
+
+if (process.env.START_SERVER !== 'false') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}

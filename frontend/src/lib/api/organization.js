@@ -1,13 +1,19 @@
-import { useAuth } from "../../contexts/AuthContext";
+import { getAccessToken } from "./tokenStore";
 
-const { apiRequest } = useAuth();
+const API_URL = import.meta.env.VITE_API_BACKEND;
+
+const getAuthHeader = () => ({
+  'Authorization': `Bearer ${getAccessToken()}`,
+  'Content-Type': 'application/json'
+});
 
 export const CreateOrganization = async (data) => {
     try {
-        const response = await apiRequest("/api/admin/createOrganization", {
+        const response = await fetch(`${API_URL}/api/admin/createOrganization`, {
             method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            headers: getAuthHeader(),
+            body: JSON.stringify(data),
+            credentials: 'include'
         });
 
       if (!response.ok) {
@@ -15,18 +21,20 @@ export const CreateOrganization = async (data) => {
         throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
       }
 
-      const data = await response.json();
+      return await response.json();
     } catch (error) {
         console.error("error creating organization", error);
+        throw error;
     }
 }
 
 export const AddUserToOrganization = async (data) => {
     try {
-        const response = await apiRequest("/api/admin/addUserToOrganization", {
+        const response = await fetch(`${API_URL}/api/admin/addUserToOrganization`, {
             method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            headers: getAuthHeader(),
+            body: JSON.stringify(data),
+            credentials: 'include'
         });
 
       if (!response.ok) {
@@ -34,18 +42,20 @@ export const AddUserToOrganization = async (data) => {
         throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
       }
 
-      const data = await response.json();
+      return await response.json();
     } catch (error) {
         console.error("error creating organization", error);
+        throw error;
     }
 };
 
 export const RemoveUserFromOrganization = async (data) => {
     try {
-        const response = await apiRequest("/api/admin/removeUserFromOrganization", {
+        const response = await fetch(`${API_URL}/api/admin/removeUserFromOrganization`, {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
+            credentials: 'include'
         });
 
       if (!response.ok) {
@@ -53,8 +63,9 @@ export const RemoveUserFromOrganization = async (data) => {
         throw new Error(error.error || error.errors?.[0]?.msg || 'Registration failed');
       }
 
-      const data = await response.json();
+      return await response.json();
     } catch (error) {
         console.error("error creating organization", error);
+        throw error;
     }
 };

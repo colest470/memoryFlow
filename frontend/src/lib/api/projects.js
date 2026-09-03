@@ -1,9 +1,9 @@
-import { useAuth } from "../../contexts/AuthContext";
+import { getAccessToken } from "./tokenStore";
 
 const API_URL = import.meta.env.VITE_API_BACKEND;
 
 const getAuthHeader = () => ({
-  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+  'Authorization': `Bearer ${getAccessToken()}`,
   'Content-Type': 'application/json'
 });
 

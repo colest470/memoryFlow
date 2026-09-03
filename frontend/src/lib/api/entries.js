@@ -1,13 +1,13 @@
 const API_URL = import.meta.env.VITE_API_BACKEND;
 
 const getAuthHeader = () => ({
-  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+  'Authorization': `Bearer ${accessToken}`,
   'Content-Type': 'application/json'
 });
 
 export const entriesAPI = {
   async createEntry(entryData) {
-    const response = await fetch(`${API_URL}/api/entries`, {
+    const response = await api(`${API_URL}/api/entries`, {
       method: 'POST',
       headers: getAuthHeader(),
       body: JSON.stringify(entryData),
@@ -37,7 +37,6 @@ export const entriesAPI = {
     return response.json();
   },
 
-  // Get single entry with connections
   async getEntry(entryId) {
     const response = await fetch(`${API_URL}/api/entries/${entryId}`, {
       headers: getAuthHeader(),
@@ -54,7 +53,6 @@ export const entriesAPI = {
     return response.json();
   },
 
-  // Update an entry
   async updateEntry(entryId, updates) {
     const response = await fetch(`${API_URL}/api/entries/${entryId}`, {
       method: 'PUT',
@@ -71,7 +69,6 @@ export const entriesAPI = {
     return response.json();
   },
 
-  // Delete an entry
   async deleteEntry(entryId) {
     const response = await fetch(`${API_URL}/api/entries/${entryId}`, {
       method: 'DELETE',
@@ -86,7 +83,6 @@ export const entriesAPI = {
     return response.json();
   },
 
-  // Link entries
   async linkEntries(parentId, childId, linkType = 'related_to') {
     const response = await fetch(`${API_URL}/api/entries/${parentId}/links`, {
       method: 'POST',

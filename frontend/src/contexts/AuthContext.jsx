@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { setAccessToken as setApiAccessToken } from "../lib/api/tokenStore";
 
 const AuthContext = createContext(undefined);
 
@@ -7,41 +8,21 @@ export const useAuth =  () => {
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
+
   return context;
 }
+
+// access token for non-hook modules is synced to the token store
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState("");
 
-  const backendURL = import.meta.env.VITE_API_BACKEND
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-
-      if (token) {
-        try {
-          const response = await apiRequest(`/api/user/profile`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-            console.log(user);
-          }
-        } catch (error) {
-          console.error('Session check failed:', error);
-        }
-      }
-      
-      setLoading(false);
-    };
-  
-    initAuth();
-  }, []);
+  const backendURL = import.meta.env.VITE_API_BACKEND;
 
   const apiRequest = async (url, options = {}) => {
-    const token = localStorage.getItem("accessToken");
+    const token = accessToken;
 
     const config = {
       ...options,
@@ -55,7 +36,7 @@ export const AuthProvider = ({ children }) => {
 
     let response = await fetch(`${backendURL}${url}`, config);
 
-    if (response.status === 401 && token) {
+    if (response.status === 401 && token) {// means forbidden...unauthorized
       try {
         const refreshResponse = await fetch(`${backendURL}/api/auth/refresh`, {
           method: "POST",
@@ -67,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();
-          localStorage.setItem('accessToken', data.accessToken);
+          setAccessToken(data.accessToken);
           setUser(data.user);
 
           config.headers = {
@@ -76,18 +57,51 @@ export const AuthProvider = ({ children }) => {
           };
           response = await fetch(`${backendURL}${url}`, config);
         } else {
-          localStorage.removeItem('accessToken');
+          setAccessToken("");
           setUser(null);
         }
-      } catch (error) {
+        } catch (error) {
         console.error('Token refresh failed:', error);
-        localStorage.removeItem('accessToken');
+          setAccessToken("");
         setUser(null);
       }
     }
 
     return response;
   }
+
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop().split(';').shift();
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const refreshToken = getCookie('refreshToken');
+
+      if (refreshToken) {
+        try {
+          const response = await apiRequest(`/api/user/profile`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data.user);
+          }
+          // token (if any) will be synced via effect below
+        } catch (error) {
+          console.error('Session check failed:', error);
+        }
+      }
+      
+      setLoading(false);
+    };
+  
+    initAuth();
+  }, []);
 
   const register = async ( email, fullName, password, confirmPassword, organization, department, role ) => {
     try {
@@ -133,7 +147,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      localStorage.setItem("accessToken", data.accessToken);
+      setAccessToken(data.accessToken);
       setUser(data.user);
     } catch (error) {
       console.error(error);
@@ -154,7 +168,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.error || error.errors?.[0]?.msg || 'Logout failed');
       }
 
-      localStorage.removeItem("accessToken");
+      setAccessToken("");
       setUser(null);
     } catch (error) {
       console.error("Error logging out: ", error);
@@ -164,10 +178,16 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    accessToken,
+    apiRequest,
     logout,
     register,
     login,
   }
+
+  useEffect(() => {
+    setApiAccessToken(accessToken);
+  }, [accessToken]);
 
   return (
     <AuthContext.Provider value={value}>
