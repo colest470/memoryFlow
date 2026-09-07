@@ -120,16 +120,18 @@ router.post("/login", [
 
     const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
 
-    // await db.runAsync(
-    // 'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
-    // [refreshToken, user.id, expiresAt]
-    // );
-
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 3 * 7 * 24 * 60 * 60 * 1000 
+    });
+
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000
     });
 
     res.json({
@@ -157,60 +159,45 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ error: 'Refresh token required' });
     }
 
-    // const tokenRecord = await db.getAsync(
-    //     'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > datetime("now")',
-    //     [refreshToken]
-    // );
+    const decoded = verifyRefreshToken(refreshToken);
 
-    // const allTokenRecord = await db.getAsync(
-    //     'SELECT * FROM refresh_tokens',
-    //     [refreshToken]
-    // );
-    // console.log("Tokenrecord: ", allTokenRecord);
-
-    // if (!tokenRecord) {
-    //   return res.status(401).json({ error: 'Invalid refresh token' });
-    // }
-
-    let isRefreshOk = verifyRefreshToken(refreshToken);
-
-    if (refreshToken) {
-      res.status(401).json({ error: "Refresh token invalid" });
+    if (!decoded) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
     }
 
-    const user = await db.getAsync(`SELECT * FROM users WHERE id = ?`, [isRefreshOk.user_id])
+    const user = await db.getAsync(`SELECT * FROM profiles WHERE id = ?`, [decoded.userId]);
 
     if (!user) {
-      return res.status(403).json({ 
-        error: 'User not found',
-        code: 'USER_INACTIVE'
-      });
+      return res.status(403).json({ error: 'User not found', code: 'USER_INACTIVE' });
     }
 
-    const { accessToken, refreshedToken } = generateTokens(tokenRecord.user_id);
+    const { accessToken, refreshToken: newRefresh } = generateTokens(decoded.userId);
 
-    // await db.runAsync('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
-
-    // const expiresAt = new Date(Date.now() + 3 * 7 * 24 * 60 * 60 * 1000);
-    // await db.runAsync(
-    // 'INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
-    // [refreshedToken, tokenRecord.user_id, expiresAt]
-    // );
-
-    res.cookie('refreshToken', refreshedToken, {
+    // rotate refresh token cookie
+    res.cookie('refreshToken', newRefresh, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 3 * 7 * 24 * 60 * 60 * 1000
+    });
+
+    // set access token cookie
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000
     });
 
     res.json({
       accessToken,
       user: {
         id: user.id,
-        name: user.name,
+        name: user.full_name,
         email: user.email,
-        role: role,
+        organization: user.organization,
+        department: user.department,
+        role: user.role,
       }
     });
   } catch (error) {

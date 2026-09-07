@@ -76,15 +76,10 @@ router.post('/', authenticateToken(), async (req, res) => {
  */
 router.get('/', authenticateToken(), async (req, res) => {
   try {
-    console.log('User ID from token:', req.user.id); // Debug log
-    
-    // Get user's organization - use user_id to match
     const user = await db.getAsync(
       'SELECT user_id, role, organization_id FROM user_organizations WHERE user_id = ?',
       [req.user.id]
     );
-
-    console.log('Found user in organization:', user); // Debug log
 
     if (!user) {
       console.error('User organization not found for user ID:', req.user.id);

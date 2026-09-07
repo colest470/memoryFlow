@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_BACKEND;
 
 const getAuthHeader = () => ({
-  'Authorization': `Bearer ${accessToken}`,
+  'Authorization': `Bearer ${""}`,
   'Content-Type': 'application/json'
 });
 

@@ -4,11 +4,6 @@ import "dotenv/config";
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 
 export const generateTokens = (userId) => {
-  console.log('Token expiries:', {
-    ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '15m',
-    REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d'
-  });
-
   let accessToken;
   try {
     accessToken = jwt.sign(
@@ -47,7 +42,6 @@ export const generateTokens = (userId) => {
 export const verifyAccessToken = (token) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log("Decoded access token:", decoded);
     return decoded;
   } catch(error) {
     return null;
@@ -57,7 +51,6 @@ export const verifyAccessToken = (token) => {
 export const verifyRefreshToken = (token) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log("Decoded refresh token:", decoded);
     return decoded;
   } catch(error) {
     return null;
@@ -66,72 +59,60 @@ export const verifyRefreshToken = (token) => {
 
 export const authenticateToken = () => {
   return async (req, res, next) => {
-    const authHeader = req.headers['authorization'];
+    const authHeader = req.headers.authorization;
+    const cookieAccess = req.cookies?.accessToken;
+    const cookieRefresh = req.cookies?.refreshToken;
 
-    if (!authHeader) {
-      return res.status(401).json({ 
-        error: 'Authorization header missing',
-        code: 'MISSING_AUTH_HEADER'
-      });
+    let token = null;
+    let decoded = null;
+
+    // Prefer Authorization header
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+      decoded = verifyAccessToken(token);
+      if (!decoded) {
+        console.error('Invalid access token provided in Authorization header');
+        return res.status(401).json({ error: 'Invalid access token', code: 'INVALID_ACCESS_TOKEN' });
+      }
+    } else if (cookieAccess) {
+      token = cookieAccess;
+      decoded = verifyAccessToken(token);
+      if (!decoded) {
+        // invalid access cookie, fallthrough to try refresh
+        decoded = null;
+      }
     }
 
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-      return res.status(401).json({ 
-        error: 'Malformed authorization header', 
-        code: 'MALFORMED_HEADER' 
+    // If we didn't get a valid access token, try refresh token
+    if (!decoded && cookieRefresh) {
+      const refreshDecoded = verifyRefreshToken(cookieRefresh);
+      if (!refreshDecoded) {
+        console.error('Invalid refresh token cookie');
+        return res.status(401).json({ error: 'Invalid refresh token', code: 'INVALID_REFRESH_TOKEN' });
+      }
+
+      // generate a new access token
+      const { accessToken: newAccess } = generateTokens(refreshDecoded.userId);
+
+      // set access token cookie
+      res.cookie('accessToken', newAccess, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000
       });
+
+      decoded = verifyAccessToken(newAccess);
+      token = newAccess;
     }
-
-    const token = parts[1];
-
-    if (!token) {
-      return res.status(401).json({ 
-        error: 'Access token required',
-        code: 'MISSING_TOKEN'
-      });
-    }
-
-    const decoded = verifyAccessToken(token);
 
     if (!decoded) {
-      return res.status(401).json({ 
-        error: 'Access token expired or invalid',
-        code: 'EXPIRED_ACCESS_TOKEN',
-        action: 'ACCESS_TOKEN'
-      });
+      console.error('Authorization failed. authHeader:', !!authHeader, 'cookieAccess:', !!cookieAccess, 'cookieRefresh:', !!cookieRefresh);
+      return res.status(401).json({ error: 'Authorization required', code: 'MISSING_AUTH' });
     }
 
-    if (decoded.type !== 'access') {
-      return res.status(401).json({ 
-        error: 'Invalid token type',
-        code: 'INVALID_TOKEN_TYPE'
-      });
-    }
-
-    const decoded2 = verifyRefreshToken(req.cookies.refreshToken);
-
-    if (!decoded2) {
-      return res.status(401).json({ 
-        error: 'Access token expired or invalid',
-        code: 'EXPIRED_ACCESS_TOKEN',
-        action: 'REFRESH_TOKEN'
-      });
-    }
-
-    console.log("Decoded 2", decoded2);
-
-    if (decoded.type !== 'refresh') {
-      return res.status(401).json({ 
-        error: 'Invalid token type',
-        code: 'INVALID_TOKEN_TYPE'
-      });
-    }
-
-    // let accessToken = generateAccessToken();
-
-    req.user = { ...decoded, id: decoded.userId } || { ...decoded2, id: decoded2.userId };
-    req.userId = decoded.userId || decoded2.userId;
+    req.user = { ...decoded, id: decoded.userId };
+    req.userId = decoded.userId;
 
     next();
   };

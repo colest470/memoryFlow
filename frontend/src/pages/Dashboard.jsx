@@ -3,7 +3,6 @@ import { Plus, Search as SearchIcon, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjects, createProject } from '../lib/api/projects';
-import { entriesAPI } from '../lib/api/entries';
 import DashboardStats from '../components/dashboard/DashboardStats';
 import ProjectCard from '../components/projects/ProjectCard';
 import ProjectForm from '../components/projects/ProjectForm';
@@ -34,15 +33,19 @@ export default function Dashboard() {
 
       console.log('Projects data:', projectsData);
 
-      const statsData = await entriesAPI.getStats();
-      if (statsData && statsData.stats) {
-        setStats({
-          totalEntries: statsData.stats.totalEntries || 0,
-          activeProjects: projectsData?.filter(p => p.status === 'active').length || 0,
-          contributors: statsData.stats.totalAuthors || 0,
-          lessonLearned: statsData.stats.lessonLearnedCount || 0,
-        });
-      }
+      // compute stats locally from projects data
+      const totalEntries = (projectsData || []).reduce((sum, p) => sum + (p.entry_count || 0), 0);
+      const activeProjects = (projectsData || []).filter(p => p.status === 'active').length;
+      const contributors = new Set((projectsData || []).map(p => p.owner_name).filter(Boolean)).size;
+      // lessonLearned not available on project list response; default to 0
+      const lessonLearned = 0;
+
+      setStats({
+        totalEntries,
+        activeProjects,
+        contributors,
+        lessonLearned
+      });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {

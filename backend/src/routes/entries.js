@@ -782,7 +782,11 @@ router.get('/timeline/:projectId', authenticateToken(), async (req, res) => {
  */
 router.get('/stats/dashboard', authenticateToken(), async (req, res) => {
   try {
-    // Total entries
+    const organizationId = await db.getAsync(`
+      SELECT id FROM organizations WHERE created_by = ?`,
+      [req.userId]
+    )
+
     const totalResult = await db.getAsync(
       `SELECT COUNT(*) as count FROM memory_entries me
        JOIN profiles p ON p.id = me.author_id

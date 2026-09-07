@@ -1,9 +1,6 @@
-import { getAccessToken } from "./tokenStore";
-
 const API_URL = import.meta.env.VITE_API_BACKEND;
 
 const getAuthHeader = () => ({
-  'Authorization': `Bearer ${getAccessToken()}`,
   'Content-Type': 'application/json'
 });
 

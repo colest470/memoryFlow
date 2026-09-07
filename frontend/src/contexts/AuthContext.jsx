@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { setAccessToken as setApiAccessToken } from "../lib/api/tokenStore";
 
 const AuthContext = createContext(undefined);
 
@@ -36,7 +35,7 @@ export const AuthProvider = ({ children }) => {
 
     let response = await fetch(`${backendURL}${url}`, config);
 
-    if (response.status === 401 && token) {// means forbidden...unauthorized
+    if (response.status === 401) { // try refresh when unauthorized
       try {
         const refreshResponse = await fetch(`${backendURL}/api/auth/refresh`, {
           method: "POST",
@@ -48,8 +47,8 @@ export const AuthProvider = ({ children }) => {
 
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();
-          setAccessToken(data.accessToken);
-          setUser(data.user);
+          setAccessToken(data.accessToken || '');
+          setUser(data.user || null);
 
           config.headers = {
             ...config.headers,
@@ -81,20 +80,20 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const refreshToken = getCookie('refreshToken');
+      try {
+        const response = await fetch(`${backendURL}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
 
-      if (refreshToken) {
-        try {
-          const response = await apiRequest(`/api/user/profile`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          }
-          // token (if any) will be synced via effect below
-        } catch (error) {
-          console.error('Session check failed:', error);
+        if (response.ok) {
+          const data = await response.json();
+          setAccessToken(data.accessToken || '');
+          setUser(data.user || null);
         }
+      } catch (error) {
+        console.error('Session check failed:', error);
       }
       
       setLoading(false);
@@ -147,7 +146,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      setAccessToken(data.accessToken);
+      setAccessToken(data.accessToken || '');
+
       setUser(data.user);
     } catch (error) {
       console.error(error);
@@ -184,10 +184,6 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
   }
-
-  useEffect(() => {
-    setApiAccessToken(accessToken);
-  }, [accessToken]);
 
   return (
     <AuthContext.Provider value={value}>
