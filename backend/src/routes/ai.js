@@ -459,6 +459,7 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
       const result = await model.generateContent(prompt);
       const aiResponse = result.response.text();
 
+
       let analysis;
 
       try {
@@ -469,10 +470,14 @@ router.get("/:id/analyze", authenticateToken(), async (req, res) => {
         
         analysis = JSON.parse(cleanedResponse);
 
-        await db.runAsync(`
-          ALTER TABLE projects
-        `, [analysis]);
+        await db.runAsync(
+          `UPDATE projects SET metadata = ? WHERE id = ?`, [aiResponse, projectId]);
+
       } catch (parseError) {
+        res.status(500).json({
+          error: "Error generating anlysis"
+        });
+
         console.error("Failed to parse project analysis JSON:", parseError);
         analysis = {
           executive_summary: "Analysis completed but returned in raw format.",

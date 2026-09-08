@@ -3,13 +3,16 @@ import "dotenv/config"
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAi.getGenerativeModel({ 
-  model: "gemini-2.5-flash", 
-  generationConfig: {
-    temperature: 0.3,
-    maxOutputTokens: 3024,
-  }
-});
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+const getGeminiModel = (modelName = DEFAULT_GEMINI_MODEL) =>
+  genAi.getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 3024,
+    }
+  });
 
 /**
  * AI Analysis Service
@@ -181,17 +184,26 @@ RESPONSE FORMAT (JSON ONLY):
   "complexity_score": 0-10
 }`;
 
-    const model = genAi.getGenerativeModel({ model: "gemini-1.5-pro" }); 
+    const model = getGeminiModel();
     const result = await model.generateContent(prompt);
     const response = result.response.text();
+    const cleanedResponse = String(response || '').trim();
+    const jsonCandidate = cleanedResponse
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
     
     try {
-      return JSON.parse(response);
+      return JSON.parse(jsonCandidate);
     } catch (parseError) {
       console.error('Failed to parse project analysis JSON:', parseError);
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = jsonCandidate.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch (innerError) {
+          console.error('Failed to parse extracted JSON chunk:', innerError);
+        }
       }
 
       return null;
@@ -222,7 +234,7 @@ RESPONSE FORMAT (JSON ONLY):
   "collaboration_opportunities": ["opportunity1", "opportunity2"]
 }`;
 
-    const model = genAi.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = getGeminiModel();
     const result = await model.generateContent(prompt);
     return JSON.parse(result.response.text());
   } catch (error) {

@@ -323,8 +323,21 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
         analysis = await comprehensiveAnalyzeProject(entries);
     }
 
+    const normalizedAnalysis = normalizeProjectAnalysis(analysis, entries);
+    console.log('Normalized analysis:', normalizedAnalysis); 
+
+    let results;
+    if(typeof normalizedAnalysis === "object") {
+      results = normalizedAnalysis;
+    } else {
+      results = JSON.parse(normalizedAnalysis, null, 2);
+    }
+
     await db.runAsync(`
-      UPDATE TABLE projects SET metadata = ? WHERE id = ?`, [JSON.stringify(analysis)], id
+      UPDATE projects
+      SET metadata = ?, updated_at = datetime('now')
+      WHERE id = ?`,
+      [JSON.stringify(results), projectId]
     );
 
     res.json({
@@ -336,7 +349,7 @@ router.post('/:id/analyze', authenticateToken(), async (req, res) => {
       },
       analysis_type: analysisType,
       entries_analyzed: entries.length,
-      analysis
+      analysis: normalizedAnalysis
     });
 
   } catch (error) {
@@ -593,61 +606,78 @@ router.get('/:id/insights', authenticateToken(), async (req, res) => {
   }
 });
 
-router.get("/:id/analysis", authenticateToken(), async (req, res) => {
+router.get('/:id/analysis', authenticateToken(), async (req, res) => {
   try {
-    const { id: projectId } = req.params; // Fix: extract id from params
+    const { id: projectId } = req.params;
 
     if (!projectId) {
-      return res.status(400).json({ error: "Project ID is required" });
+      return res.status(400).json({ error: 'Project ID is required' });
     }
 
-    // Option 1: If analysis is stored as a JSON field in the projects table
     const project = await db.getAsync(
-      `SELECT id, title, metadata FROM projects WHERE id = ?`, 
+      `SELECT id, title, metadata FROM projects WHERE id = ?`,
       [projectId]
     );
 
     if (!project) {
-      return res.status(404).json({ error: "Project not found" });
+      return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Parse metadata if it exists and contains analysis
-    let analysis = null;
-    if (project.metadata) {
+    let analysis = {};
+    if (project.metadata && project.metadata !== '{}') {
       try {
-        const metadata = typeof project.metadata === 'string' 
-          ? JSON.parse(project.metadata) 
-          : project.metadata;
-        analysis = metadata.analysis || null;
+        const parsedContent = JSON.parse(project.metadata);
+        analysis = normalizeProjectAnalysis(parsedContent, []);
       } catch (parseError) {
-        console.error("Error parsing metadata:", parseError);
+        console.error('Error parsing stored project analysis:', parseError);
+        analysis = { raw_metadata: project.metadata };
       }
     }
 
-    // If you want to generate analysis on-the-fly instead of storing it
-    // You could call your AI service here
-    
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      projectId: projectId,
-      analysis: analysis || {
-        executive_summary: "No analysis available for this project yet.",
-        key_findings: [],
-        recommendations: [],
-        entry_count: 0,
-        model: "N/A",
-        generated_at: new Date().toISOString()
-      }
+      projectId,
+      analysis
     });
 
-  } catch(error) {
-    console.error("Error fetching project analysis:", error);
-    res.status(500).json({ 
+  } catch (error) {
+    console.error('Error fetching project analysis:', error);
+    return res.status(500).json({
       success: false,
-      error: `Failed to fetch project analysis: ${error.message}` 
+      error: `Failed to fetch project analysis: ${error.message}`
     });
   }
 });
+
+function normalizeProjectAnalysis(analysis, entries = []) {
+  const safeAnalysis = analysis && typeof analysis === 'object' ? analysis : {};
+
+  const keyFindings = Array.isArray(safeAnalysis.key_findings)
+    ? safeAnalysis.key_findings
+    : (Array.isArray(safeAnalysis.key_themes)
+      ? safeAnalysis.key_themes.map(theme => theme.description || theme.theme || 'Theme identified')
+      : []);
+
+  const recommendations = Array.isArray(safeAnalysis.recommendations)
+    ? safeAnalysis.recommendations
+    : (Array.isArray(safeAnalysis.actionable_recommendations)
+      ? safeAnalysis.actionable_recommendations
+      : []);
+
+  return {
+    executive_summary: safeAnalysis.executive_summary || safeAnalysis.overall_summary || '',
+    key_findings: keyFindings,
+    recommendations,
+    entry_count: entries.length || safeAnalysis.entry_count || 0,
+    top_topics: Array.isArray(safeAnalysis.top_topics) ? safeAnalysis.top_topics : [],
+    identified_gaps: Array.isArray(safeAnalysis.identified_gaps) ? safeAnalysis.identified_gaps : [],
+    entry_connections: Array.isArray(safeAnalysis.entry_connections) ? safeAnalysis.entry_connections : [],
+    sentiment_analysis: safeAnalysis.sentiment_analysis || '',
+    complexity_score: safeAnalysis.complexity_score ?? null,
+    generated_at: new Date().toISOString(),
+    raw_analysis: safeAnalysis
+  };
+}
 
 async function comprehensiveAnalyzeProject(entries) {
   const analysis = await AnalyzeProject(entries);

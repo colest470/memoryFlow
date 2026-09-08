@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, FileText, Zap, BarChart3, Users, Clock, TrendingUp } from 'lucide-react';
-import { getProject } from '../lib/api/projects';
+import { getProject, getAnalysis, analyzeProject as analyzeProjectApi } from '../lib/api/projects';
 import { entriesAPI } from '../lib/api/entries';
 import TimelineView from '../components/timeline/TimelineView';
 import EntryForm from '../components/forms/EntryForm';
@@ -37,6 +37,19 @@ export default function ProjectView() {
 
       setProject(projectData);
       setEntries(timelineData.entries);
+
+      try {
+        const savedAnalysis = await getAnalysis(projectId);
+        if (savedAnalysis && Object.keys(savedAnalysis).length > 0) {
+          setAnalyzeResult({
+            analysis: savedAnalysis,
+            entry_count: savedAnalysis.entry_count || timelineData.entries.length,
+            model: 'Saved project analysis'
+          });
+        }
+      } catch (analysisError) {
+        console.info('No stored project analysis found:', analysisError.message);
+      }
     } catch (error) {
       console.error('Error loading project:', error);
       setEntries([]);
@@ -63,9 +76,14 @@ export default function ProjectView() {
   async function handleAnalyzeProject() {
     setAnalyzeLoading(true);
     try {
-      const result = await entriesAPI.analyzeProject(projectId);
+      const result = await analyzeProjectApi(projectId);
       console.log(result);
-      setAnalyzeResult(result);
+      setAnalyzeResult({
+        ...result,
+        analysis: result.analysis || {},
+        entry_count: result.entries_analyzed || result.analysis?.entry_count || entries.length,
+        model: result.analysis_type || 'AI Model'
+      });
       setShowAnalysisModal(true);
     } catch (err) {
       console.error('Analyze project failed', err);
@@ -116,24 +134,24 @@ export default function ProjectView() {
 
     const downloadAsText = () => {
       const content = `
-=== ENTRY DETAILS ===
-Title: ${entry.title}
-Type: ${entry.entry_type}
-Created: ${formatDate(entry.created_at)}
-Author: ${entry.author_name || entry.author?.full_name || 'Unknown'}
-Department: ${entry.author_department || entry.author?.department || 'N/A'}
-Status: ${entry.status || 'active'}
-Project: ${entry.project_title || 'N/A'}
+        === ENTRY DETAILS ===
+        Title: ${entry.title}
+        Type: ${entry.entry_type}
+        Created: ${formatDate(entry.created_at)}
+        Author: ${entry.author_name || entry.author?.full_name || 'Unknown'}
+        Department: ${entry.author_department || entry.author?.department || 'N/A'}
+        Status: ${entry.status || 'active'}
+        Project: ${entry.project_title || 'N/A'}
 
-=== CONTENT ===
-${entry.content || 'No content'}
+        === CONTENT ===
+        ${entry.content || 'No content'}
 
-=== TAGS ===
-${Array.isArray(entry.tags) ? entry.tags.join(', ') : entry.tags || 'No tags'}
+        === TAGS ===
+        ${Array.isArray(entry.tags) ? entry.tags.join(', ') : entry.tags || 'No tags'}
 
-=== METADATA ===
-${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
-      `.trim();
+        === METADATA ===
+        ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
+              `.trim();
 
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -652,14 +670,7 @@ ${entry.metadata ? JSON.stringify(entry.metadata, null, 2) : 'No metadata'}
                         {analyzeLoading ? 'Analyzing...' : 'Run Analysis'}
                       </button>
                     </div>
-                    <Analysis projectId={projectId} />
-                  </>
-                )}
-
-                {activeTab === 'analytics' && (
-                  <>
-                    <h2 className="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">Project Analytics</h2>
-                    <p className="text-orange-400">Analytics view is under construction.</p>
+                    <Analysis projectId={projectId}/>  
                   </>
                 )}
 
