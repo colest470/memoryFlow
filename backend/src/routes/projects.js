@@ -449,11 +449,6 @@ router.delete("/:id/members", authenticateToken(), async (req, res) => {
   }
 });
 
-
-/**
- * GET ANALYSIS HISTORY
- * GET /api/projects/:id/analyses
- */
 router.get('/:id/analyses', authenticateToken(), async (req, res) => {
   try {
     const { id: projectId } = req.params;
@@ -624,7 +619,7 @@ router.get('/:id/analysis', authenticateToken(), async (req, res) => {
     }
 
     let analysis = {};
-    if (project.metadata && project.metadata !== '{}') {
+    if (project.metadata) {
       try {
         const parsedContent = JSON.parse(project.metadata);
         analysis = normalizeProjectAnalysis(parsedContent, []);
@@ -632,6 +627,12 @@ router.get('/:id/analysis', authenticateToken(), async (req, res) => {
         console.error('Error parsing stored project analysis:', parseError);
         analysis = { raw_metadata: project.metadata };
       }
+    } else if (project.metadata !== '{}') {
+      return res.status(404).json({
+        success: false,
+        projectId,
+        error: "Project not analyzed!"
+      });
     }
 
     return res.status(200).json({

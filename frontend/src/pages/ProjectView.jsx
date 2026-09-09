@@ -21,11 +21,20 @@ export default function ProjectView() {
   const [analyzeResult, setAnalyzeResult] = useState(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showEntryModal, setShowEntryModal] = useState(false);
+  const [isProjectAnalyzed, setIsProjectAnalyzed] = useState(false);
   const [activeTab, setActiveTab] = useState('timeline');
   const navigate = useNavigate();
 
   useEffect(() => {
     loadProjectData();
+
+    const getAnalysisData = async () => {
+      const analysis = await getAnalysis(projectId);
+
+      setIsProjectAnalyzed(!!analysis?.analysis); // true or false
+    } 
+
+    getAnalysisData();
   }, [projectId]);
 
   async function loadProjectData() {
@@ -602,7 +611,7 @@ export default function ProjectView() {
               <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Analysis</span>
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab('analytics')}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                 activeTab === 'analytics'
@@ -612,7 +621,7 @@ export default function ProjectView() {
             >
               <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Analytics</span>
-            </button>
+            </button> */}
             <button
               onClick={() => setActiveTab('team')}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
@@ -667,10 +676,10 @@ export default function ProjectView() {
                         disabled={analyzeLoading}
                       >
                         <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
-                        {analyzeLoading ? 'Analyzing...' : 'Run Analysis'}
+                        { isProjectAnalyzed ? "generate new analysis" : analyzeLoading ? 'Analyzing...' : 'Run Analysis'}
                       </button>
                     </div>
-                    <Analysis projectId={projectId}/>  
+                    <Analysis projectId={projectId} />  
                   </>
                 )}
 

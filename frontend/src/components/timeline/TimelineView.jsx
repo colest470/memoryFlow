@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Clock, User, Tag, Link as LinkIcon, FolderOpen, AlertCircle, ChevronRight, CornerDownRight, Search, X } from 'lucide-react';
 
 export default function TimelineView({ entries, onSelectEntry, onAddRelated }) {

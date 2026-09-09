@@ -3,6 +3,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { TextPlugin } from 'gsap/TextPlugin';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
@@ -16,6 +17,8 @@ const Home = () => {
   const statsRef = useRef([]);
   const flowPathRef = useRef(null);
 
+  const { user } = useAuth();
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,7 +26,6 @@ const Home = () => {
     
     const heroTimeline = gsap.timeline();
     
-    // Animate brain logo
     heroTimeline.fromTo(brainRef.current,
       { scale: 0, rotation: -180, opacity: 0 },
       { scale: 1, rotation: 0, opacity: 1, duration: 1.5, ease: "back.out(1.7)" }
