@@ -175,6 +175,39 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const changePassword = async (currentPassword, newPassword, confirmNewPassword) => {
+    try {
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        throw new Error("All password fields are required");
+      }
+
+      if (newPassword.length < 6) {
+        throw new Error("New password must be at least 6 characters long");
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        throw new Error("New password and confirmation do not match");
+      }
+
+      const response = await apiRequest(`/api/auth/changePassword`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword, confirmNewPassword }),
+        credentials: "include"
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || error.errors?.[0]?.msg || 'Password change failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error changing password: ", error);
+      throw error;
+    }
+  }
+
   const value = {
     user,
     loading,
@@ -183,6 +216,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     register,
     login,
+    changePassword,
   }
 
   return (

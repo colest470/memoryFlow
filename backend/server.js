@@ -3,8 +3,8 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
 
+import { authLimiter } from "./middleware/authLimiter.js";
 import authRoutes from "./src/routes/auth.js";
 import userRoutes from "./src/routes/user.js";
 import projectRoutes from "./src/routes/projects.js";
@@ -23,7 +23,6 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || FRONTEND_URL).split(',');
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // allow requests with no origin like mobile apps or curl
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
@@ -43,19 +42,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: 'Too many authentication attempts, try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      error: 'Too many authentication attempts, try again later'
-    });
-  }
 });
 
 app.use('/api/auth', authLimiter, authRoutes);

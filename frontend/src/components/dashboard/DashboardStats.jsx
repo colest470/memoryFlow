@@ -17,6 +17,8 @@ export default function DashboardStats({ refreshTrigger }) {
     fetchStats();
   }, [refreshTrigger]);
 
+  console.log(stats);
+
   const fetchStats = async () => {
     try {
       setLoading(true);
@@ -105,7 +107,7 @@ export default function DashboardStats({ refreshTrigger }) {
         {statCards.map((stat) => (
           <div
             key={stat.label}
-            className={`bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6 hover:border-orange-500/50 hover:shadow-xl transition-all duration-300 ${
+            className={`bg-black rounded-xl shadow-lg border border-gray-700 p-6 hover:border-orange-500/50 hover:shadow-xl transition-all duration-300 ${
               stat.isHealth && knowledgeHealth < 60 ? 'border-yellow-500/50' : ''
             }`}
           >
@@ -148,7 +150,7 @@ export default function DashboardStats({ refreshTrigger }) {
       {/* Breakdown by Type and Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Entries by Type */}
-        <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
+        <div className="bg-black rounded-xl shadow-lg border border-gray-700 p-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-blue-400" />
             Entries by Type
@@ -182,7 +184,7 @@ export default function DashboardStats({ refreshTrigger }) {
         </div>
 
         {/* Entries by Status */}
-        <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
+        <div className="bg-blue rounded-xl shadow-lg border border-gray-700 p-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-green-400" />
             Knowledge Health
@@ -226,28 +228,6 @@ export default function DashboardStats({ refreshTrigger }) {
           </div>
         </div>
       </div>
-
-      {/* Risk Areas - Orange Theme */}
-      {riskAreas.length > 0 && (
-        <div className="bg-gradient-to-r from-orange-900/20 to-orange-900/10 border-l-4 border-orange-500 rounded-lg p-6">
-          <div className="flex items-start gap-4">
-            <AlertCircle className="w-6 h-6 text-orange-400 flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="text-lg font-bold text-orange-300 mb-2">
-                Risk Areas
-              </h3>
-              <ul className="space-y-2">
-                {riskAreas.map((risk, index) => (
-                  <li key={index} className="text-sm text-orange-200 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                    {risk}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Error Message */}
       {error && (

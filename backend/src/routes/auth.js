@@ -235,8 +235,44 @@ router.post('/logout', authenticateToken(), async (req, res) => {
   }
 });
 
-router.post("/changePassword", async () => {
+router.post("/changePassword", authenticateToken(), async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmNewPassword } = req.body;
 
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      return res.status(400).json({ error: "Current password, new password, and confirmation are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters long" });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ error: "New password and confirmation do not match" });
+    }
+
+    const user = await db.getAsync(`SELECT password_hash FROM profiles WHERE id = ?`, [req.user.id]);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const isPasswordOk = await bycrypt.compare(currentPassword, user.password_hash);
+
+    if (!isPasswordOk) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+
+    const saltRounds = 12;
+    const newPasswordHash = await bycrypt.hash(newPassword, saltRounds);
+
+    await db.runAsync(`UPDATE profiles SET password_hash = ?, updated_at = datetime('now') WHERE id = ?`, [newPasswordHash, req.user.id]);
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Internal server error while changing password' });
+  }
 });
 
 const cleanupExpiredTokens = async () => {

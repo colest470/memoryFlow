@@ -76,9 +76,9 @@ export default function OrganizationInsights() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-slate-900 truncate">{entry.title}</p>
                   <div className="flex gap-3 mt-1 text-xs text-slate-600">
-                    <span>📚 {entry.reuse_count || 0} reuses</span>
-                    <span>📤 {entry.share_count || 0} shares</span>
-                    {entry.avg_rating && <span>⭐ {entry.avg_rating.toFixed(1)}</span>}
+                    <span>{entry.reuse_count || 0} reuses</span>
+                    <span>{entry.share_count || 0} shares</span>
+                    {entry.avg_rating && <span>{entry.avg_rating.toFixed(1)}</span>}
                   </div>
                 </div>
               </div>
@@ -109,7 +109,7 @@ export default function OrganizationInsights() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-slate-900 truncate">{entry.title}</p>
                   <div className="flex gap-3 mt-1 text-xs text-slate-600">
-                    <span>🔥 {(entry.reuse_count || 0) + (entry.share_count || 0)} interactions</span>
+                    <span>{(entry.reuse_count || 0) + (entry.share_count || 0)} interactions</span>
                     <span>{new Date(entry.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>

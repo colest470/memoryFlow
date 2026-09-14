@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Briefcase, Users, X, FileText, Link as LinkIcon } from 'lucide-react';
+import { Calendar, Briefcase, Users, X, FileText, Link as LinkIcon, Lock } from 'lucide-react';
 import { getUserProfile } from "../lib/api/user.js"; 
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 const Profile = () => {
   const { email } = useParams();
   const navigate = useNavigate();
+  const { user: authUser, changePassword } = useAuth();
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -15,6 +17,15 @@ const Profile = () => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef(null);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -75,16 +86,16 @@ const Profile = () => {
 
   const getEntryIcon = (entryType) => {
     const icons = {
-      'report': '📊',
-      'meeting_note': '📝',
-      'insight': '💡',
-      'decision': '✅',
-      'experiment': '🧪',
-      'outcome': '📈',
-      'proposal': '📋',
-      'result': '🏆'
+      'report': '',
+      'meeting_note': '',
+      'insight': '',
+      'decision': '',
+      'experiment': '',
+      'outcome': '',
+      'proposal': '',
+      'result': ''
     };
-    return icons[entryType] || '📄';
+    return icons[entryType] || ' ';
   };
 
   const getEntryColor = (entryType) => {
@@ -113,6 +124,34 @@ const Profile = () => {
     setIsModalOpen(false);
     setSelectedEntry(null);
   };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    setPasswordLoading(true);
+
+    try {
+      await changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword,
+        passwordForm.confirmNewPassword
+      );
+
+      setPasswordSuccess('Password updated successfully.');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmNewPassword: ''
+      });
+    } catch (err) {
+      setPasswordError(err.message || 'Unable to change password.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const isOwnProfile = authUser && user && authUser.email === user.email;
 
   if (loading) {
     return (
@@ -218,6 +257,79 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {isOwnProfile && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-gray-900/90 border border-orange-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-orange-500/10 p-3 rounded-xl">
+                <Lock className="h-6 w-6 text-orange-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Security</h2>
+                <p className="text-gray-400 text-sm">Update your password to keep your account secure.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handlePasswordChange} className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Current password</label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white focus:border-orange-400 focus:outline-none"
+                  placeholder="Enter your current password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">New password</label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white focus:border-orange-400 focus:outline-none"
+                  placeholder="New password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Confirm new password</label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmNewPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
+                  className="w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-white focus:border-orange-400 focus:outline-none"
+                  placeholder="Confirm new password"
+                />
+              </div>
+
+              {passwordError && (
+                <div className="md:col-span-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className="md:col-span-2 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+                  {passwordSuccess}
+                </div>
+              )}
+
+              <div className="md:col-span-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-3 font-medium text-white disabled:opacity-60"
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Projects Section */}
       {projects.length > 0 && (

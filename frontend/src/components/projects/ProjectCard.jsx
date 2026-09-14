@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 export default function ProjectCard({ project, onSelect }) {
   const statusColors = {
     active: 'bg-gradient-to-r from-green-900/40 to-green-900/20 text-green-300 border-green-600/50',
-    completed: 'bg-gradient-to-r from-blue-900/40 to-blue-900/20 text-blue-300 border-blue-600/50',
+    completed: 'bg-gradient-to-r from-slate-900/40 to-slate-900/20 text-slate-300 border-slate-600/50',
     archived: 'bg-gradient-to-r from-gray-900/40 to-gray-900/20 text-gray-400 border-gray-600/50',
   };
 
@@ -24,7 +24,7 @@ export default function ProjectCard({ project, onSelect }) {
   return (
     <div
       onClick={() => navigate(`/projects/${project.id}`)}
-      className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl shadow-xl border border-gray-700 p-6 hover:border-orange-500/60 hover:shadow-2xl transition-all duration-300 cursor-pointer group overflow-hidden"
+      className="relative bg-black from-gray-800 to-gray-900 rounded-xl shadow-xl border border-gray-700 p-6 hover:border-orange-500/60 hover:shadow-2xl transition-all duration-300 cursor-pointer group overflow-hidden"
     >
       {/* Background glow effect on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-orange-900/0 to-orange-900/0 group-hover:from-orange-900/10 group-hover:to-orange-900/5 transition-all duration-500"></div>
@@ -32,7 +32,7 @@ export default function ProjectCard({ project, onSelect }) {
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-3 rounded-xl shadow-lg group-hover:shadow-orange-500/20 group-hover:scale-105 transition-all duration-300">
+            <div className="bg-black from-orange-500 to-orange-600 p-3 rounded-xl shadow-lg group-hover:shadow-orange-500/20 group-hover:scale-105 transition-all duration-300">
               <Folder className="w-5 h-5 text-white" />
             </div>
             <div>

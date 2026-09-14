@@ -112,10 +112,10 @@ export default function Dashboard() {
       <div className="pt-40 min-h-screen bg-black">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <DashboardStats stats={stats} />
+            <DashboardStats stats={stats} /> {/**coming to this */}
           </div>
 
-          <div className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6 mb-8">
+          <div className="bg-black rounded-xl shadow-lg border border-gray-800 p-6 mb-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
               <div className="flex flex-wrap gap-2 sm:gap-4">
                 <button
@@ -126,7 +126,6 @@ export default function Dashboard() {
                       : 'text-slate-300 hover:bg-gray-800 border border-gray-700'
                   }`}
                 >
-                  <BarChart3 className="w-5 h-5" />
                   Projects
                 </button>
                 <button
